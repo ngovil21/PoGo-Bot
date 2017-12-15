@@ -31,6 +31,8 @@ for hour in weather_json:
         "avatar_url": "https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg",
         "embeds": [embed]
     }
-    requests.post(url=DISCORD_WEBHOOK, data=data)
+    r = requests.post(url=DISCORD_WEBHOOK, data=data)
+    print(r.status_code)
+    print(r.content)
 
 
