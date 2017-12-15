@@ -22,17 +22,17 @@ for hour in weather_json:
     lt = time.localtime(int(hour['EpochDateTime']))
     description = "{}: {}\n".format(time.strftime("%H:%M", lt), hour["IconPhrase"])
     embed = {
-        "title": time.strftime("%H:%M", lt),
-        "thumbnail": ACCUWEATHER_ICON.format(hour['WeatherIcon']),
-        "description": hour['IconPhrase'],
-        "url": hour['Link']
+        'title': time.strftime("%H:%M", lt),
+        'thumbnail': ACCUWEATHER_ICON.format(hour['WeatherIcon']),
+        'description': hour['IconPhrase'],
+        'url': hour['Link']
     }
     embeds.append(embed)
 
 data = {
-    "username": "Accuweather",
-    "avatar_url": "https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg",
-    "payload_json": json.dumps(embeds)
+    'username': 'Accuweather',
+    'avatar_url': 'https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg',
+    'payload_json': json.dumps(embeds)
 }
 r = requests.post(url=DISCORD_WEBHOOK, data=data, headers=headers)
 if r.status_code == 400:
