@@ -14,6 +14,9 @@ time.tzset()
 
 weather = requests.get(url="http://dataservice.accuweather.com/forecasts/v1/hourly/12hour/{}?apikey={}&details=False"
                        .format(LOCAL_KEY, ACCUWEATHER_API))
+if weather.ok is not True:
+    print(weather.content)
+
 weather_json = json.loads(weather.content.decode())
 
 embeds = []
@@ -31,7 +34,7 @@ for hour in weather_json:
     }
 
     data = {
-        #'avatar_url': 'https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg',
+        # 'avatar_url': 'https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg',
         'embed': embed
     }
     r = requests.post(url=DISCORD_WEBHOOK, json=data, timeout=5)
@@ -40,5 +43,3 @@ for hour in weather_json:
     else:
         print(r.content)
         print(data)
-
-
