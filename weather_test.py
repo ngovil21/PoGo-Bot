@@ -31,7 +31,7 @@ for hour in weather_json:
     }
 
     data = {
-        'avatar_url': 'https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg',
+        #'avatar_url': 'https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg',
         'embed': embed
     }
     r = requests.post(url=DISCORD_WEBHOOK, json=data, timeout=5)
