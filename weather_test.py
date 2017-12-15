@@ -24,8 +24,8 @@ for hour in weather_json:
     embed = {
         'title': time.strftime("%H:%M", lt),
         'thumbnail': ACCUWEATHER_ICON.format(hour['WeatherIcon']),
-        'description': hour['IconPhrase'],
-        'url': hour['Link']
+        'description': hour['IconPhrase'].encode(),
+        'url': hour['Link'].encode()
     }
 
     data = {
