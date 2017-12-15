@@ -16,6 +16,7 @@ weather = requests.get(url="http://dataservice.accuweather.com/forecasts/v1/hour
                        .format(LOCAL_KEY, ACCUWEATHER_API))
 if weather.ok is not True:
     print(weather.content)
+    exit(1)
 
 weather_json = json.loads(weather.content.decode())
 
