@@ -4,7 +4,7 @@ import time
 import os
 
 ACCUWEATHER_API = "fikrPxMEvARvDvYjZ04HsmJfuArj4Fv1"
-ACCUWEATHER_ICON = "https://developer.accuweather.com/sites/default/files/{}-s.png"
+ACCUWEATHER_ICON = "https://apidev.accuweather.com/developers/Media/Default/WeatherIcons/{}-s.png"
 LOCATION = "60607"
 LOCAL_KEY = "2626574"
 DISCORD_WEBHOOK = "https://discordapp.com/api/webhooks/391080178060754956/LxynWpgS1SiTwA2pqyM_kDVtYvpwJzGyRlL4AGoR3eYbBr2lOTQmyGiqmH1Rg0VUnRUE"
@@ -23,7 +23,9 @@ for hour in weather_json:
     description = "{}: {}\n".format(time.strftime("%H:%M", lt), hour["IconPhrase"])
     embed = {
         'title': time.strftime("%H:%M", lt),
-        'thumbnail': ACCUWEATHER_ICON.format(hour['WeatherIcon']),
+        'thumbnail': {
+            "url": ACCUWEATHER_ICON.format(hour['WeatherIcon'])
+        },
         'description': hour['IconPhrase'].encode(),
         'url': hour['Link'].encode()
     }
