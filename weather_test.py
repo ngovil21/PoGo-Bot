@@ -33,8 +33,10 @@ for hour in weather_json:
         'avatar_url': 'https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg',
         'embed': embed
     }
-    r = requests.post(url=DISCORD_WEBHOOK, data=data, headers=headers)
-    if r.status_code == 400:
+    r = requests.post(url=DISCORD_WEBHOOK, json=data, timeout=5)
+    if r.ok is True:
+        print("Successfully sent message")
+    else:
         print(r.content)
         print(data)
 
