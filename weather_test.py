@@ -17,6 +17,7 @@ weather = requests.get(url="http://dataservice.accuweather.com/forecasts/v1/hour
 weather_json = json.loads(weather.content.decode())
 
 embeds = []
+headers = {'Content-Type': 'application/json'}
 for hour in weather_json:
     lt = time.localtime(int(hour['EpochDateTime']))
     description = "{}: {}\n".format(time.strftime("%H:%M", lt), hour["IconPhrase"])
@@ -31,7 +32,7 @@ for hour in weather_json:
         "avatar_url": "https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg",
         "embeds": [embed]
     }
-    r = requests.post(url=DISCORD_WEBHOOK, data=data)
+    r = requests.post(url=DISCORD_WEBHOOK, data=data, headers=headers)
     print(r.status_code)
     print(r.content)
 
