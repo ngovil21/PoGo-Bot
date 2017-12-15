@@ -21,26 +21,56 @@ if weather.ok is not True:
 weather_json = json.loads(weather.content.decode())
 
 embeds = []
-headers = {'Content-Type': 'application/json'}
 for hour in weather_json:
     lt = time.localtime(int(hour['EpochDateTime']))
     description = "{}: {}\n".format(time.strftime("%H:%M", lt), hour["IconPhrase"])
     embed = {
-        'title': time.strftime("%H:%M", lt),
-        'thumbnail': {
+        "title": time.strftime("%H:%M", lt),
+        "thumbnail": {
             "url": ACCUWEATHER_ICON.format(hour['WeatherIcon'])
         },
-        'description': hour['IconPhrase'].encode(),
-        'url': hour['Link'].encode()
+        "description": hour['IconPhrase'].encode(),
+        "url": hour['Link'].encode()
     }
+    embeds.append(embed)
 
-    data = {
-        # 'avatar_url': 'https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg',
-        'embed': embed
-    }
-    r = requests.post(url=DISCORD_WEBHOOK, json=data, timeout=5)
-    if r.ok is True:
-        print("Successfully sent message")
-    else:
-        print(r.content)
-        print(data)
+data = {
+    "username": "Accuweather",
+    "avatar_url": "https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg",
+    "embeds": embeds
+}
+r = requests.post(url=DISCORD_WEBHOOK, json=data, timeout=5)
+if r.ok is True:
+    print("Successfully sent message")
+else:
+    print(r.content)
+    print(data)
+
+# data = {
+#     #"content": "Hello",
+#     "username": "Accuweather",
+#     "avatar_url": "https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg",
+#     "embeds": [
+#         {
+#             "url": "http://www.accuweather.com/en/us/little-italy-il/60612/hourly-weather-forecast/2626574?day=1&hbhhour=11&lang=en-us",
+#             "description": "Mostly cloudy",
+#             "thumbnail": {"url": "https://apidev.accuweather.com/developers/Media/Default/WeatherIcons/06-s.png"},
+#             "title": "11:00"
+#         },
+#         {
+#             "url": "http://www.accuweather.com/en/us/little-italy-il/60612/hourly-weather-forecast/2626574?day=1&hbhhour=11&lang=en-us",
+#             "description": "Mostly cloudy",
+#             "thumbnail": {"url": "https://apidev.accuweather.com/developers/Media/Default/WeatherIcons/06-s.png"},
+#             "title": "11:00"
+#         }
+#     ]
+# }
+#
+# r = requests.post(url=DISCORD_WEBHOOK, json=data, timeout=5)
+#
+# if r.ok is True:
+#     print("Successfully sent message")
+# else:
+#     print(r.content)
+#     print(data)
+
