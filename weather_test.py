@@ -27,16 +27,15 @@ for hour in weather_json:
         'description': hour['IconPhrase'],
         'url': hour['Link']
     }
-    embeds.append(embed)
 
-data = {
-    'username': 'Accuweather',
-    'avatar_url': 'https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg',
-    'payload_json': json.dumps(embeds)
-}
-r = requests.post(url=DISCORD_WEBHOOK, data=data, headers=headers)
-if r.status_code == 400:
-    print(r.content)
-    print(data)
+    data = {
+        'username': 'Accuweather',
+        'avatar_url': 'https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg',
+        'embed': embed
+    }
+    r = requests.post(url=DISCORD_WEBHOOK, data=data, headers=headers)
+    if r.status_code == 400:
+        print(r.content)
+        print(data)
 
 
