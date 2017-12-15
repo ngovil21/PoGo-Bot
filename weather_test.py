@@ -35,7 +35,8 @@ data = {
     "payload_json": json.dumps(embeds)
 }
 r = requests.post(url=DISCORD_WEBHOOK, data=data, headers=headers)
-print(r.status_code)
-print(r.content)
+if r.status_code == 400:
+    print(r.content)
+    print(data)
 
 
