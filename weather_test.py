@@ -4,7 +4,7 @@ import time
 import os
 
 ACCUWEATHER_API = "fikrPxMEvARvDvYjZ04HsmJfuArj4Fv1"
-ACCUWEATHER_ICON = "https://apidev.accuweather.com/developers/Media/Default/WeatherIcons/{02d}-s.png"
+ACCUWEATHER_ICON = "https://apidev.accuweather.com/developers/Media/Default/WeatherIcons/{0:02d}-s.png"
 LOCATION = "60607"
 LOCAL_KEY = "2626574"
 DISCORD_WEBHOOK = "https://discordapp.com/api/webhooks/391080178060754956/LxynWpgS1SiTwA2pqyM_kDVtYvpwJzGyRlL4AGoR3eYbBr2lOTQmyGiqmH1Rg0VUnRUE"
