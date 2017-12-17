@@ -36,6 +36,7 @@ for hour in weather_json:
 
 data = {
     "username": "Accuweather",
+    "content": "The hourly weather forecast for today is: ",
     "avatar_url": "https://pbs.twimg.com/profile_images/879422659620163584/wudfVGeL_400x400.jpg",
     "embeds": embeds
 }
