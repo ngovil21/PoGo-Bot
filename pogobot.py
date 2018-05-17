@@ -120,10 +120,11 @@ async def clearrole(ctx, rolex):
                                                             role.name))
                 await member.remove_roles(role)
                 count += 1
-    await ctx.message.delete()
-    await asyncio.sleep(0.1)
-    await ctx.message.channel.send(
+
+    await ctx.send(
         "Cleared {} members from role {}".format(count, rolex), delete_after=5)
+    await asyncio.sleep(0.1)
+    await ctx.message.delete()
 
 
 @bot.command(aliases=[],
