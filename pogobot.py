@@ -31,6 +31,7 @@ def on_ready():
     print(discord.version_info)
     print(bot.user.name)
     print(bot.user.id)
+    print(MOD_ROLE_ID)
     print('------')
 
 
@@ -402,8 +403,7 @@ def getEmoji(name):
 
 def check_role(member, rolex):
     for role in member.roles:
-        if str(role.id) == str(rolex.lower()) or str(
-                        role.name.lower() == str(rolex.lower())):
+        if (role.id == rolex) or (str(role.name.lower()) == str(rolex.lower())):
             return True
     return False
 
@@ -605,9 +605,9 @@ async def notify_exraid(msg):
 async def checkmod(ctx):
     if not check_role(ctx.message.author, MOD_ROLE_ID):
         print("Not a mod!")
-        await ctx.message.delete()
         await ctx.message.channel.send("You must be a mod in order to use " +
-                                       "this command!", delete_after=5)
+                                       "this command!", delete_after=10)
+        await ctx.message.delete()
         return False
     return True
 
