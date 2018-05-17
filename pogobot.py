@@ -32,6 +32,7 @@ def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print(MOD_ROLE_ID)
+    print(IMAGE_URL)
     print('------')
 
 
