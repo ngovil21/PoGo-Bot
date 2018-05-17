@@ -173,7 +173,7 @@ async def exupdater(ctx, minutes=5):
 
     while running_updater:
         await manualexscan(ctx.message.channel)
-        await ctx.send("Scan completed", delete_after=10)
+        #await ctx.send("Scan completed", delete_after=10)
         await asyncio.sleep(minutes*60)
 
     await ctx.send("exupdater stopped", delete_after=60)
