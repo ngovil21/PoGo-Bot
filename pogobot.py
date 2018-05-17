@@ -1,5 +1,6 @@
 import discord
 import os
+
 from discord.ext import commands
 import asyncio
 import configparser
@@ -18,32 +19,38 @@ base_stats = None
 cp_multipliers = None
 boss_tiers = None
 
+running_updater = False
 
 @bot.event
 @asyncio.coroutine
 def on_ready():
     print('Logged in as')
+    print(discord.version_info)
     print(bot.user.name)
     print(bot.user.id)
     print('------')
 
 
+# @bot.event
+# async def on_raw_reaction_add(*payload):
+#     print(payload)
+
+
 @bot.event
 async def on_reaction_add(reaction, user):
-    if user == bot.user:
+    if user == bot.user or reaction.message.author != bot.user:
         return
     if reaction.message.embeds and reaction.emoji == "❌":
-        for role in user.roles:
-            if role.id == MOD_ROLE_ID:
+        if check_role(user, MOD_ROLE_ID):
                 print("Message deleted by mod " + user.name)
-                await bot.delete_message(reaction.message)
+                await reaction.message.delete()
                 return
         for embed in reaction.message.embeds:
-            for field in embed.get('fields'):
-                if field.get('name') == "Created by:" \
-                        and field.get('value', "").lower() == user.name.lower():
+            for field in embed.fields:
+                if field.name == "Created by:" \
+                        and field.value.lower() == user.name.lower():
                     print("Message deleted by user " + user.name)
-                    await bot.delete_message(reaction.message)
+                    await reaction.message.delete()
                     return
     if reaction.message.embeds and check_footer(reaction.message, "raid"):
         print("notifiying raid: " + user.name)
@@ -51,27 +58,17 @@ async def on_reaction_add(reaction, user):
         return
 
     if reaction.message.embeds and check_footer(reaction.message, "ex-"):
-        role_name = reaction.message.embeds[0].get('footer', {}).get('text')
-        if role_name and role_name != "ex-raid":
-            roles = reaction.message.server.roles
-            role = None
-            for r in roles:
-                if r.name == role_name or r.id == role_name:
-                    role = r
-                    break
-            if not role:
-                role = await bot.create_role(reaction.message.server,
-                                             name=role_name, mentionable=True)
-                await asyncio.sleep(0.25)
-            print("Adding user " + user.name + " to role " + role_name)
-            await bot.add_roles(user, role)
-            await asyncio.sleep(0.1)
+        role_name = reaction.message.embeds[0].footer.text
+        # if role_name and role_name != "ex-raid":
+            # print("Adding user " + user.name + " to role " + role_name)
+            # role = await getrolefromname(reaction.message.guild, role_name,
+            #                              True)
+            # await user.add_roles(role, atomic=True)
+            # await asyncio.sleep(0.1)
         print("notifiying exraid: " + user.name)
         await notify_exraid(reaction.message)
         await asyncio.sleep(0.1)
-        await selfdestuctmessage(reaction.message.channel,
-                                 "<@{}> you have been added to {}".
-                                 format(user.id, role_name), 10)
+
         return
 
 
@@ -83,17 +80,17 @@ async def on_reaction_remove(reaction, user):
         print("notifiying raid")
         await notify_raid(reaction.message)
     if reaction.message.embeds and check_footer(reaction.message, "ex-"):
-        role_name = reaction.message.embeds[0].get('footer', {}).get('text')
+        role_name = reaction.message.embeds[0].footer.text
         if role_name and role_name != "ex-raid":
             for role in user.roles:
                 if role.name == role_name:
-                    await bot.remove_roles(user, role)
+                    await user.remove_roles(role)
         print("notifiying exraid")
         await notify_exraid(reaction.message)
         await asyncio.sleep(0.1)
-        await selfdestuctmessage(reaction.message.channel,
-                                 "<@{}> you have left {}".
-                                 format(user.id, role_name), 10)
+        await reaction.message.channel.send("<@{}> you have left {}".
+                                            format(user.id, role_name),
+                                            delete_after=10)
 
 
 @bot.command(pass_context=True)
@@ -125,16 +122,15 @@ async def clearrole(ctx, rolex):
             if role.name.lower() == rolex.lower():
                 print("Found member {} with role {}".format(member.name,
                                                             role.name))
-                await bot.remove_roles(member, role)
+                await member.remove_roles(role)
                 count += 1
-    await bot.delete_message(ctx.message)
+    await ctx.message.delete()
     await asyncio.sleep(0.1)
-    await selfdestuctmessage(ctx.message.channel,
-                             "Cleared {} members from role {}".format(count,
-                                                                      rolex))
+    await ctx.message.channel.send(
+        "Cleared {} members from role {}".format(count, rolex), delete_after=5)
 
 
-@bot.command(aliases=[""],
+@bot.command(aliases=[],
              brief="Purge messages from channel",
              pass_context=True)
 async def purge(ctx, pinned=False):
@@ -142,10 +138,71 @@ async def purge(ctx, pinned=False):
         return not message.pinned
 
     if await checkmod(ctx):
-        await bot.purge_from(ctx.message.channel,
-                             check=notpinned if not pinned else None)
+        await ctx.message.channel.purge(check=notpinned if not pinned else None)
         await asyncio.sleep(0.1)
         # await bot.delete_message(ctx.message)
+
+
+@bot.command(aliases=["sex"],
+             brief="Manually scan channel for ex-raid posts. !scanex ",
+             pass_context=True)
+async def scanex(ctx):
+    if not await checkmod(ctx):
+        return
+
+    await manualexscan(ctx.message.channel)
+    await ctx.message.delete()
+    await ctx.message.channel.send("Scan completed", delete_after=10)
+
+
+@bot.command(aliases=["exu"],
+             brief="Continuously update ex-raid channel manually. "
+                   "!exupdater [minutes]",
+             pass_context=True)
+async def exupdater(ctx, minutes=5):
+    global running_updater
+    if not await checkmod(ctx):
+        return
+
+    ctx.message.delete()
+
+    if minutes > 0:
+        running_updater = True
+    else:
+        running_updater = False
+        return
+
+    while running_updater:
+        await manualexscan(ctx.message.channel)
+        await ctx.message.channel.send("Scan completed", delete_after=10)
+        await asyncio.sleep(minutes*60)
+
+    await ctx.send("exupdater stopped", delete_after=60)
+
+
+async def manualexscan(channel):
+    async for msg in channel.history(limit=500):
+        if msg.author != bot.user:
+            continue
+        if msg.embeds and msg.embeds[0].footer and \
+                msg.embeds[0].footer.text.startswith("ex-"):
+            await notify_exraid(msg)
+
+
+@bot.command(aliases=[],
+             brief="Clear raid posts from channel. !clearraids",
+             pass_context=True)
+async def clearraids(ctx):
+
+    def raid(msg):
+        return msg.author == bot.user and msg.embeds and \
+               msg.embeds[0].footer and \
+               msg.embeds[0].footer.text == "raid"
+
+    if not await checkmod(ctx):
+        return
+    await ctx.message.channel.purge(limit=500, check=raid)
+    await ctx.send("Cleared all raid posts", delete_after=10)
 
 
 @bot.command(aliases=["r"],
@@ -155,13 +212,12 @@ async def purge(ctx, pinned=False):
                   "guests that will accompany you.",
              brief="Create a new raid post. !raid <pkmn> <location> <time>",
              pass_context=True)
-async def raid(ctx, pkmn, location, timer="45 mins"):
-
+async def raid(ctx, pkmn, location, timer="45 mins", url=None):
     if not await checkmod(ctx):
         return
 
     thumb = None
-    descrip = "Located: {}\nTime: {}".format(location, timer)
+    descrip = ""
     pkmn_case = pkmn[0].upper() + pkmn[1:].lower()
     if pkmn_case in locale['pokemon']:
         pkmn_id = locale['pokemon'][pkmn_case]
@@ -180,42 +236,55 @@ async def raid(ctx, pkmn, location, timer="45 mins"):
                        pow((stats['defense'] + 15.0), 0.5) *
                        pow((stats['stamina'] + 15.0), 0.5) *
                        pow(lvl20cpm, 2)) / 10.0)
+        mincp25 = int(((stats['attack'] + 10.0) *
+                       pow((stats['defense'] + 10.0), 0.5) *
+                       pow((stats['stamina'] + 10.0), 0.5) *
+                       pow(lvl25cpm, 2)) / 10.0)
+        maxcp25 = int(((stats['attack'] + 15.0) *
+                       pow((stats['defense'] + 15.0), 0.5) *
+                       pow((stats['stamina'] + 15.0), 0.5) *
+                       pow(lvl25cpm, 2)) / 10.0)
 
-        descrip += "\nCP: ({}-{})".format(mincp20, maxcp20)
+        descrip = "CP: ({}-{})  WB: ({}-{})".format(mincp20, maxcp20,
+                                                         mincp25, maxcp25)
 
     embed = discord.Embed(title="Raid - {}".format(pkmn_case),
-                          description=descrip)
+                          description=descrip, url=url)
     if thumb:
         embed.set_thumbnail(url=thumb)
-    embed.add_field(name="<:mystic:446018237721739276>Mystic (0)", value="[]",
+    embed.add_field(name="Location:", value=location, inline=True)
+    embed.add_field(name="Time:", value=timer + "\n", inline=True)
+    embed.add_field(name="** **", value="** **", inline=False)
+    embed.add_field(name="<:mystic:446018237721739276>__Mystic (0)__", value="[]",
                     inline=True)
-    embed.add_field(name="<:valor:446018241542750209>Valor (0)", value="[]",
+    embed.add_field(name="<:valor:446018241542750209>__Valor (0)__", value="[]",
                     inline=True)
-    embed.add_field(name="<:instinct:446018246605537300>Instinct (0)",
+    embed.add_field(name="<:instinct:446018246605537300>__Instinct (0)__",
                     value="[]", inline=True)
-    embed.add_field(name="Total:", value="0", inline=False)
-    embed.add_field(name="Created by:", value=ctx.message.author.name,
-                    inline=True)
+    embed.add_field(name="**Total:**", value="0", inline=False)
+    embed.add_field(name="Created by:",
+                    value="*{}*".format(ctx.message.author.name),
+                    inline=False)
     embed.set_footer(text="raid")
-    msg = await bot.send_message(ctx.message.channel, embed=embed)
+    msg = await ctx.message.channel.send(embed=embed)
     await asyncio.sleep(0.1)
-    await bot.delete_message(ctx.message)
-    await bot.pin_message(msg)
-    await bot.add_reaction(msg, getEmoji("mystic"))
+    await ctx.message.delete()
+    await msg.pin()
+    await msg.add_reaction(getEmoji("mystic"))
     await asyncio.sleep(0.1)
-    await bot.add_reaction(msg, getEmoji("valor"))
+    await msg.add_reaction(getEmoji("valor"))
     await asyncio.sleep(0.1)
-    await bot.add_reaction(msg, getEmoji("instinct"))
+    await msg.add_reaction(getEmoji("instinct"))
     await asyncio.sleep(0.1)
-    await bot.add_reaction(msg, "1⃣")
+    await msg.add_reaction("1⃣")
     await asyncio.sleep(0.1)
-    await bot.add_reaction(msg, "2⃣")
+    await msg.add_reaction("2⃣")
     await asyncio.sleep(0.1)
-    await bot.add_reaction(msg, "3⃣")
+    await msg.add_reaction("3⃣")
     await asyncio.sleep(0.1)
-    await bot.add_reaction(msg, "❌")
+    await msg.add_reaction("❌")
     await asyncio.sleep(3600)
-    await bot.delete_message(msg)
+    await msg.delete()
 
 
 @bot.command(aliases=["ex"],
@@ -234,7 +303,7 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
 
     thumb = None
 
-    descrip = "Located: {}\nDate: {}".format(location, date)
+    descrip = ""
 
     pkmn_case = pkmn[0].upper() + pkmn[1:].lower()
     if pkmn_case in locale['pokemon']:
@@ -254,38 +323,54 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
                        pow((stats['defense'] + 15.0), 0.5) *
                        pow((stats['stamina'] + 15.0), 0.5) *
                        pow(lvl20cpm, 2)) / 10.0)
+        mincp25 = int(((stats['attack'] + 10.0) *
+                       pow((stats['defense'] + 10.0), 0.5) *
+                       pow((stats['stamina'] + 10.0), 0.5) *
+                       pow(lvl25cpm, 2)) / 10.0)
+        maxcp25 = int(((stats['attack'] + 15.0) *
+                       pow((stats['defense'] + 15.0), 0.5) *
+                       pow((stats['stamina'] + 15.0), 0.5) *
+                       pow(lvl25cpm, 2)) / 10.0)
 
-        descrip += "\nCP: ({}-{})".format(mincp20, maxcp20)
+        descrip = "CP: ({}-{})  WB: ({}-{})".format(mincp20, maxcp20,
+                                                         mincp25, maxcp25)
 
     embed = discord.Embed(title="EX-Raid - {}".format(pkmn_case),
                           description=descrip)
     if thumb:
         embed.set_thumbnail(url=thumb)
-    embed.add_field(name="Mystic:", value="[]", inline=True)
-    embed.add_field(name="Valor:", value="[]", inline=True)
-    embed.add_field(name="Instinct:", value="[]", inline=True)
+    embed.add_field(name="Location:", value=location, inline=True)
+    embed.add_field(name="Date:", value=date + "\n", inline=True)
+    embed.add_field(name="** **", value="** **", inline=False)
+    embed.add_field(name="<:mystic:446018237721739276>__Mystic (0)__", value="[]",
+                    inline=True)
+    embed.add_field(name="<:valor:446018241542750209>__Valor (0)__", value="[]",
+                    inline=True)
+    embed.add_field(name="<:instinct:446018246605537300>__Instinct (0)__",
+                    value="[]", inline=True)
+    embed.add_field(name="Total:", value="0", inline=False)
     embed.set_footer(text=role)
-    msg = await bot.send_message(ctx.message.channel, embed=embed)
+    msg = await ctx.message.channel.send(embed=embed)
     await asyncio.sleep(0.25)
-    await bot.delete_message(ctx.message)
-    await bot.pin_message(msg)
-    await bot.add_reaction(msg, getEmoji("mystic"))
+    await ctx.message.delete()
+    await msg.pin()
+    await msg.add_reaction(getEmoji("mystic"))
     await asyncio.sleep(0.25)
-    await bot.add_reaction(msg, getEmoji("valor"))
+    await msg.add_reaction(getEmoji("valor"))
     await asyncio.sleep(0.25)
-    await bot.add_reaction(msg, getEmoji("instinct"))
+    await msg.add_reaction(getEmoji("instinct"))
     await asyncio.sleep(0.25)
-    await bot.add_reaction(msg, "1⃣")
+    await msg.add_reaction("1⃣")
     await asyncio.sleep(0.25)
-    await bot.add_reaction(msg, "2⃣")
+    await msg.add_reaction("2⃣")
     await asyncio.sleep(0.25)
-    await bot.add_reaction(msg, "3⃣")
+    await msg.add_reaction("3⃣")
     await asyncio.sleep(0.25)
-    await bot.add_reaction(msg, "❌")
+    await msg.add_reaction("❌")
 
 
 def getEmoji(name):
-    return discord.utils.get(bot.get_all_emojis(), name=name)
+    return discord.utils.get(bot.emojis, name=name)
 
 
 def check_role(member, rolex):
@@ -299,7 +384,7 @@ def check_role(member, rolex):
 def check_footer(msg, val):
     if msg.embeds:
         for embed in msg.embeds:
-            if embed.get('footer', {}).get('text', "").startswith(val):
+            if embed.footer and embed.footer.text.startswith(val):
                 return True
     return False
 
@@ -322,29 +407,29 @@ async def notify_raid(msg):
                 total += 3 * (reaction.count - 1)
         else:
             if reaction.emoji.name == 'mystic':
-                users = await bot.get_reaction_users(reaction)
+                users = await reaction.users().flatten()
                 for user in users:
                     if user == bot.user:
                         continue
-                    mystic += user.display_name + ","
+                    mystic += user.mention + ","
                     m_tot += 1
                     total += 1
                 mystic = mystic.rstrip(",")
             elif reaction.emoji.name == 'valor':
-                users = await bot.get_reaction_users(reaction)
+                users = await reaction.users().flatten()
                 for user in users:
                     if user == bot.user:
                         continue
-                    valor += user.display_name + ","
+                    valor += user.mention + ","
                     v_tot += 1
                     total += 1
                 valor = valor.rstrip(", ")
             elif reaction.emoji.name == 'instinct':
-                users = await bot.get_reaction_users(reaction)
+                users = await reaction.users().flatten()
                 for user in users:
                     if user == bot.user:
                         continue
-                    instinct += user.display_name + ","
+                    instinct += user.mention + ","
                     i_tot += 1
                     total += 1
                 instinct = instinct.rstrip(", ")
@@ -352,25 +437,33 @@ async def notify_raid(msg):
     valor = "[" + valor + "]"
     instinct = "[" + instinct + "]"
 
-    for field in msg.embeds[0]['fields']:
-        if field.get('name', "").startswith("Created"):
-            created_by = field.get('value')
+    em = discord.Embed(title=msg.embeds[0].title,
+                       description=msg.embeds[0].description,
+                       url=msg.embeds[0].url)
+    created_by = None
+    for field in msg.embeds[0].fields:
+        if field.name.startswith("Created"):
+            created_by = field.value.strip("* ")
+        elif field.name.startswith("Location"):
+            em.add_field(name="Location:", value=field.value, inline=True)
+        elif field.name.startswith("Time"):
+            em.add_field(name="Time:", value=field.value, inline=True)
+    if msg.embeds[0].thumbnail:
+        em.set_thumbnail(url=msg.embeds[0].thumbnail.url)
+    em.add_field(name="** **", value="** **", inline=False)
 
-    em = discord.Embed(title=msg.embeds[0]['title'],
-                       description=msg.embeds[0]['description'])
-    em.set_thumbnail(url=msg.embeds[0]['thumbnail'].get('url', None))
-    em.add_field(name="<:mystic:446018237721739276>Mystic ({})".format(m_tot),
+    em.add_field(name="<:mystic:446018237721739276>__Mystic ({})__".format(m_tot),
                  value=mystic, inline=True)
-    em.add_field(name="<:valor:446018241542750209>Valor ({})".format(v_tot),
+    em.add_field(name="<:valor:446018241542750209>__Valor ({})__".format(v_tot),
                  value=valor, inline=True)
     em.add_field(
-        name="<:instinct:446018246605537300>Instinct ({})".format(i_tot),
+        name="<:instinct:446018246605537300>__Instinct ({})__".format(i_tot),
         value=instinct, inline=False)
-    em.add_field(name="Total:", value=total, inline=True)
-    em.add_field(name="Created by:", value=created_by, inline=True)
-    em.set_footer(text="Raid")
+    em.add_field(name="**Total:**", value="**{}**".format(total), inline=False)
+    em.add_field(name="Created by:", value="*{}*".format(created_by), inline=False)
+    em.set_footer(text="raid")
 
-    await bot.edit_message(message=msg, embed=em)
+    await msg.edit(embed=em)
 
 
 async def notify_exraid(msg):
@@ -381,6 +474,10 @@ async def notify_exraid(msg):
     v_tot = 0
     i_tot = 0
     total = 0
+    role_name = msg.embeds[0].footer.text
+    role = None
+    if role_name and role_name != "ex-raid":
+        role = await getrolefromname(msg.guild, role_name, True)
     for reaction in msg.reactions:
         if isinstance(reaction.emoji, str):
             if reaction.emoji == "1⃣":
@@ -389,31 +486,60 @@ async def notify_exraid(msg):
                 total += 2 * (reaction.count - 1)
             elif reaction.emoji == "3⃣":
                 total += 3 * (reaction.count - 1)
-        else:
-            if reaction.emoji.name == 'mystic':
-                users = await bot.get_reaction_users(reaction)
+            elif reaction.emoji == "❌":
+                users = await reaction.users().flatten()
                 for user in users:
                     if user == bot.user:
                         continue
-                    mystic += user.display_name + ","
+                    if check_role(user, MOD_ROLE_ID):
+                        await msg.delete()
+                        return
+        else:
+            if reaction.emoji.name == 'mystic':
+                users = await reaction.users().flatten()
+                for user in users:
+                    if user == bot.user:
+                        continue
+                    if role and role not in user.roles:
+                        await user.add_roles(role, atomic=True)
+                        print("User {} added to role {}".format(user.name,
+                                                                role_name))
+                        await msg.channel.send("{} you have been added to {}".
+                                         format(user.mention, role_name),
+                                         delete_after=10)
+                    mystic += user.mention + ","
                     m_tot += 1
                     total += 1
                 mystic = mystic.rstrip(",")
             elif reaction.emoji.name == 'valor':
-                users = await bot.get_reaction_users(reaction)
+                users = await reaction.users().flatten()
                 for user in users:
                     if user == bot.user:
                         continue
-                    valor += user.display_name + ","
+                    if role and role not in user.roles:
+                        await user.add_roles(role, atomic=True)
+                        print("User {} added to role {}".format(user.name,
+                                                                role_name))
+                        await msg.channel.send("{} you have been added to {}".
+                                         format(user.mention, role_name),
+                                         delete_after=10)
+                    valor += user.mention + ","
                     v_tot += 1
                     total += 1
                 valor = valor.rstrip(", ")
             elif reaction.emoji.name == 'instinct':
-                users = await bot.get_reaction_users(reaction)
+                users = await reaction.users().flatten()
                 for user in users:
                     if user == bot.user:
                         continue
-                    instinct += user.display_name + ","
+                    if role and role not in user.roles:
+                        await user.add_roles(role, atomic=True)
+                        print("User {} added to role {}".format(user.name,
+                                                                role_name))
+                        await msg.channel.send("{} you have been added to {}".
+                                         format(user.mention, role_name),
+                                         delete_after=10)
+                    instinct += user.mention + ","
                     i_tot += 1
                     total += 1
                 instinct = instinct.rstrip(", ")
@@ -421,44 +547,55 @@ async def notify_exraid(msg):
     valor = "[" + valor + "]"
     instinct = "[" + instinct + "]"
 
+    em = discord.Embed(title=msg.embeds[0].title,
+                       description=msg.embeds[0].description,
+                       url=msg.embeds[0].url)
     created_by = None
-    for field in msg.embeds[0]['fields']:
-        if field.get('name', "").startswith("Created"):
-            created_by = field.get('value')
+    for field in msg.embeds[0].fields:
+        if field.name.startswith("Created"):
+            created_by = field.value
+        elif field.name.startswith("Location"):
+            em.add_field(name="Location:", value=field.value, inline=True)
+        elif field.name.startswith("Date"):
+            em.add_field(name="Date:", value=field.value, inline=True)
 
-    em = discord.Embed(title=msg.embeds[0]['title'],
-                       description=msg.embeds[0]['description'])
-    em.set_thumbnail(url=msg.embeds[0]['thumbnail'].get('url', None))
-    em.add_field(name="<:mystic:446018237721739276>Mystic ({})".format(m_tot),
+    em.set_thumbnail(url=msg.embeds[0].thumbnail.url)
+    em.add_field(name="** **", value="** **", inline=False)
+    em.add_field(name="<:mystic:446018237721739276>__Mystic ({})__".format(m_tot),
                  value=mystic, inline=True)
-    em.add_field(name="<:valor:446018241542750209>Valor ({})".format(v_tot),
+    em.add_field(name="<:valor:446018241542750209>__Valor ({})__".format(v_tot),
                  value=valor, inline=True)
     em.add_field(
-        name="<:instinct:446018246605537300>Instinct ({})".format(i_tot),
+        name="<:instinct:446018246605537300>__Instinct ({})__".format(i_tot),
         value=instinct, inline=False)
-    em.add_field(name="Total:", value=total, inline=True)
-    em.add_field(name="Created by:", value=created_by, inline=True)
-    em.set_footer(text=msg.embeds[0]['footer'].get('text'))
+    em.add_field(name="**Total:**", value=total, inline=True)
+    em.set_footer(text=msg.embeds[0].footer.text)
 
-    await bot.edit_message(message=msg, embed=em)
+    await msg.edit(embed=em)
 
 
 async def checkmod(ctx):
     if not check_role(ctx.message.author, MOD_ROLE_ID):
         print("Not a mod!")
-        await bot.delete_message(ctx.message)
-        msg = await selfdestuctmessage(ctx.message.channel,
-                                       "You must be a mod in order to use " +
-                                       "this command!")
+        await ctx.message.delete()
+        await ctx.message.channel.send("You must be a mod in order to use " +
+                                       "this command!", delete_after=5)
         return False
     return True
 
 
-async def selfdestuctmessage(dest, cont, delay=5, tts=False, e=None):
-    msg = await bot.send_message(destination=dest, content=cont,
-                                 tts=tts, embed=e)
-    await asyncio.sleep(delay)
-    await bot.delete_message(msg)
+async def getrolefromname(guild, role_name, create_new_role=False):
+    roles = guild.roles
+    role = None
+    for r in roles:
+        if r.name == role_name or r.id == role_name:
+            role = r
+            break
+    if not role and create_new_role:
+        role = await guild.create_role(name=role_name, mentionable=True,
+                                       reason="Role created for ex-raid")
+        await asyncio.sleep(0.25)
+    return role
 
 
 cfg = configparser.ConfigParser()
