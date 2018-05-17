@@ -27,12 +27,11 @@ running_updater = False
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    print('Logged in as')
     print(discord.version_info)
-    print(bot.user.name)
-    print(bot.user.id)
-    print(MOD_ROLE_ID)
-    print(IMAGE_URL)
+    print('Logged in as: {}'.format(bot.user.name))
+    print('Bot ID: {}'.format(bot.user.id))
+    print("Mod Role ID: {}".format(MOD_ROLE_ID))
+    print("Image URL: {}".format(IMAGE_URL))
     print('------')
 
 
