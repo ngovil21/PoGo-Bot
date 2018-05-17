@@ -404,7 +404,7 @@ def getEmoji(name):
 
 def check_role(member, rolex):
     for role in member.roles:
-        if (role.id == rolex) or (str(role.name.lower()) == str(rolex.lower())):
+        if (str(role.id) == rolex) or (str(role.name.lower()) == str(rolex.lower())):
             return True
     return False
 
