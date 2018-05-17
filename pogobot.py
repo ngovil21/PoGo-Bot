@@ -137,7 +137,7 @@ async def purge(ctx, pinned=False):
     if await checkmod(ctx):
         await ctx.message.channel.purge(check=notpinned if not pinned else None)
         await asyncio.sleep(0.1)
-        # await bot.delete_message(ctx.message)
+        # await ctx.message.delete()
 
 
 @bot.command(aliases=["sex"],
@@ -148,8 +148,8 @@ async def scanex(ctx):
         return
 
     await manualexscan(ctx.message.channel)
+    await ctx.send("Scan completed", delete_after=10)
     await ctx.message.delete()
-    await ctx.message.channel.send("Scan completed", delete_after=10)
 
 
 @bot.command(aliases=["exu"],
@@ -173,7 +173,7 @@ async def exupdater(ctx, minutes=5):
 
     while running_updater:
         await manualexscan(ctx.message.channel)
-        await ctx.message.channel.send("Scan completed", delete_after=10)
+        await ctx.send("Scan completed", delete_after=10)
         await asyncio.sleep(minutes*60)
 
     await ctx.send("exupdater stopped", delete_after=60)
@@ -270,7 +270,7 @@ async def raid(ctx, pkmn, location, timer="45 mins", url=None):
                     value="*{}*".format(ctx.message.author.name),
                     inline=False)
     embed.set_footer(text="raid")
-    msg = await ctx.message.channel.send(embed=embed)
+    msg = await ctx.send(embed=embed)
     await asyncio.sleep(0.1)
     await ctx.message.delete()
     await msg.pin()
@@ -611,7 +611,7 @@ async def notify_exraid(msg):
 async def checkmod(ctx):
     if not check_role(ctx.message.author, MOD_ROLE_ID):
         print("Not a mod!")
-        await ctx.message.channel.send("You must be a mod in order to use " +
+        await ctx.send("You must be a mod in order to use " +
                                        "this command!", delete_after=10)
         await ctx.message.delete()
         return False
