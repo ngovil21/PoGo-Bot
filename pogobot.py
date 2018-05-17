@@ -46,9 +46,7 @@ async def on_reaction_add(reaction, user):
                 await reaction.message.delete()
                 return
         for embed in reaction.message.embeds:
-            for field in embed.fields:
-                if field.name == "Created by:" \
-                        and field.value.lower() == user.name.lower():
+            if embed.author == user.name:
                     print("Message deleted by user " + user.name)
                     await reaction.message.delete()
                     return
@@ -58,13 +56,6 @@ async def on_reaction_add(reaction, user):
         return
 
     if reaction.message.embeds and check_footer(reaction.message, "ex-"):
-        role_name = reaction.message.embeds[0].footer.text
-        # if role_name and role_name != "ex-raid":
-            # print("Adding user " + user.name + " to role " + role_name)
-            # role = await getrolefromname(reaction.message.guild, role_name,
-            #                              True)
-            # await user.add_roles(role, atomic=True)
-            # await asyncio.sleep(0.1)
         print("notifiying exraid: " + user.name)
         await notify_exraid(reaction.message)
         await asyncio.sleep(0.1)
@@ -250,6 +241,7 @@ async def raid(ctx, pkmn, location, timer="45 mins", url=None):
 
     embed = discord.Embed(title="Raid - {}".format(pkmn_case),
                           description=descrip, url=url)
+    embed.set_author(name=ctx.message.author.name)
     if thumb:
         embed.set_thumbnail(url=thumb)
     embed.add_field(name="Location:", value=location, inline=True)
@@ -285,6 +277,38 @@ async def raid(ctx, pkmn, location, timer="45 mins", url=None):
     await msg.add_reaction("❌")
     await asyncio.sleep(3600)
     await msg.delete()
+
+
+@bot.command(aliases=["rt"],
+             usage="!raidtime [location] [time]",
+             brief="Edit the time on a previous raid post. "
+                   "!raidtime <location> <time>",
+             pass_context=True)
+async def raidtime(ctx, loc, timer="45 mins"):
+
+    if not await checkmod(ctx):
+        return
+
+    async for msg in ctx.message.channel.history():
+        if msg.author != bot.user or not msg.embeds:
+            continue
+        for field in msg.embeds[0].fields:
+            if field.name.startswith("Location") and \
+                            field.value.lower() == loc.lower():
+                for i in range(0, len(msg.embeds[0].fields)):
+                    field2 = msg.embeds[0].fields[i]
+                    if field2.name.startswith("Time") or \
+                            field2.name.startswith("Date"):
+                        msg.embeds[0].set_field_at(i, name=field2.name,
+                                                   value=timer,
+                                                   inline=True)
+                        await msg.edit(embed=msg.embeds[0])
+                        await ctx.send("Updated Raid at {} to Time: {}"
+                                       .format(loc, timer))
+                        await ctx.message.delete()
+                        return
+    await ctx.message.delete()
+    await ctx.send("Unable to find Raid at {}".format(loc), delete_after=30)
 
 
 @bot.command(aliases=["ex"],
@@ -440,6 +464,7 @@ async def notify_raid(msg):
     em = discord.Embed(title=msg.embeds[0].title,
                        description=msg.embeds[0].description,
                        url=msg.embeds[0].url)
+    em.set_author(name=msg.embeds[0].author.name)
     created_by = None
     for field in msg.embeds[0].fields:
         if field.name.startswith("Created"):
