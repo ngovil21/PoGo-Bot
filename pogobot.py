@@ -164,6 +164,8 @@ async def exupdater(ctx, minutes=5):
 
     if minutes > 0:
         running_updater = True
+        await ctx.send("Scanning every {} minutes.".format(minutes),
+                       delete_after=10)
     else:
         running_updater = False
         return
@@ -211,6 +213,10 @@ async def clearraids(ctx):
 async def raid(ctx, pkmn, location, timer="45 mins", url=None):
     if not await checkmod(ctx):
         return
+
+    #check for valid url
+    if url and not url.startswith("http"):
+        url = None
 
     thumb = None
     descrip = ""
@@ -280,7 +286,7 @@ async def raid(ctx, pkmn, location, timer="45 mins", url=None):
     await msg.add_reaction("3⃣")
     await asyncio.sleep(0.1)
     await msg.add_reaction("❌")
-    await asyncio.sleep(3600)
+    await asyncio.sleep(7200)
     await msg.delete()
 
 
