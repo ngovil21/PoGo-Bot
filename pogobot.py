@@ -676,10 +676,10 @@ def getEmoji(name):
 if __name__ == "__main__":
     cfg = configparser.ConfigParser()
     cfg.read('config.ini')
-    bot.command_prefix = cfg['PoGoBot']['BotPrefix']
-    MOD_ROLE_ID = cfg['PoGoBot']['ModRoleID']
-    IMAGE_URL = cfg['PoGoBot']['ImageURL']
-    EX_RAID_CHANNEL = cfg['PoGoBot']['ExRaidChannel']
+    bot.command_prefix = cfg['PoGoBot']['BotPrefix'] or "!"
+    MOD_ROLE_ID = cfg['PoGoBot'].get('ModRoleID') or -1
+    IMAGE_URL = cfg['PoGoBot'].get('ImageURL') or None
+    EX_RAID_CHANNEL = cfg['PoGoBot'].get('ExRaidChannel', 0)
     with open(os.path.join('locales', '{}.json'
             .format(cfg['PoGoBot']['Locale'] or 'en'))) as f:
         locale = json.load(f)
