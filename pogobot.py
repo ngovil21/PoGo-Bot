@@ -644,12 +644,12 @@ async def notify_exraid(msg):
     em.set_thumbnail(url=msg.embeds[0].thumbnail.url)
     em.add_field(name="** **", value="** **", inline=False)
     em.add_field(
-        name="<:mystic:446018237721739276>__Mystic ({})__".format(m_tot),
+        name=str(getEmoji("mystic")) + "__Mystic ({})__".format(m_tot),
         value=mystic, inline=True)
-    em.add_field(name="<:valor:446018241542750209>__Valor ({})__".format(v_tot),
+    em.add_field(name=str(getEmoji("valor")) + "__Valor ({})__".format(v_tot),
                  value=valor, inline=True)
     em.add_field(
-        name="<:instinct:446018246605537300>__Instinct ({})__".format(i_tot),
+        name=str(getEmoji("instinct")) + "__Instinct ({})__".format(i_tot),
         value=instinct, inline=False)
     em.add_field(name="**Total:**", value=total, inline=True)
     em.set_footer(text=msg.embeds[0].footer.text)
