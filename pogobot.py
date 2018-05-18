@@ -38,11 +38,11 @@ async def on_ready():
     print('Bot ID: {}'.format(bot.user.id))
     print("Mod Role ID: {}".format(MOD_ROLE_ID))
     print("Image URL: {}".format(IMAGE_URL))
-    print("Ex-Raid Channel: ".format(EX_RAID_CHANNEL))
+    print("Ex-Raid Channel: {}".format(EX_RAID_CHANNEL))
     print('------')
 
     if EX_RAID_CHANNEL:
-        exchan = bot.get_channel(EX_RAID_CHANNEL)
+        exchan = bot.get_channel(int(EX_RAID_CHANNEL))
         if exchan:
             running_updater = True
             await exchan.send("Scanning ex-raid channel for updates",
