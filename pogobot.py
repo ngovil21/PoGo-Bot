@@ -325,6 +325,8 @@ async def raid(ctx, pkmn, location, timer="45 mins", url=None):
     await msg.add_reaction("3⃣")
     await asyncio.sleep(0.1)
     await msg.add_reaction("❌")
+    await asyncio.sleep(7200)
+    await msg.unpin()
 
 
 @bot.command(aliases=["rt"],
@@ -396,6 +398,7 @@ async def raidmessage(ctx, loc, message):
                 return
         await ctx.send("Cannot find raid *{}*".format(loc), delete_after=10.0)
         await ctx.message.delete()
+
 
 @bot.command(aliases=["ex"],
              name="exraid",
