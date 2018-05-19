@@ -8,6 +8,7 @@ from discord.ext import commands
 import asyncio
 import configparser
 import json
+import datetime
 
 from utility import getfieldbyname, check_role, check_footer, \
     getrolefromname
@@ -254,6 +255,18 @@ async def clearraids(ctx):
 async def raid(ctx, pkmn, location, timer="45 mins", url=None):
     if not await checkmod(ctx):
         return
+
+    async for msg in ctx.message.channel.history():
+        if msg.author == bot.user and msg.embeds:
+            loc = getfieldbyname(msg.embeds[0].fields, "Location")
+            if loc and location.lower() == loc.value.lower() and pkmn.lower() in msg.embeds[0].title.lower():
+                if (datetime.utcnow() - msg.created_at) < \
+                        datetime.timedelta(minutes=30):
+                    await ctx.send("Raid at {} already exists,please use "
+                                   "previous post".format(loc.value),
+                                   delete_after=10.0)
+                    await ctx.message.delete()
+                    return
 
     # check for valid url
     if url and not url.startswith("http"):
