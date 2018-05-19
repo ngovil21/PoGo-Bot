@@ -90,7 +90,7 @@ async def on_reaction_add(reaction, user):
         await notify_raid(reaction.message)
         if isinstance(reaction.emoji, str):
             await reaction.message.channel.send(
-                "{} is bringing {} to raid {}".format(
+                "{} is bringing +{} to raid {}".format(
                     user.name, reaction.emoji, loc))
         return
 
@@ -100,7 +100,7 @@ async def on_reaction_add(reaction, user):
         await notify_exraid(reaction.message)
         if isinstance(reaction.emoji, str):
             await reaction.message.channel.send(
-                "{} is bringing {} to ex-raid *{}*".format(
+                "{} is bringing +{} to ex-raid *{}*".format(
                     user.name, reaction.emoji, loc))
         return
 
@@ -363,7 +363,7 @@ async def raidtime(ctx, loc, timer=None):
                                                    "Total")
                             total = total.value if total else 0
                             await ctx.send(
-                                "Raid at *{}* at time: **{}** has  __{}__  "
+                                "Raid at **{}** at time: **{}** has  **{} **  "
                                 "people registered."
                                 .format(field.value, field2.value, total))
                             await ctx.message.delete()
@@ -377,7 +377,7 @@ async def raidtime(ctx, loc, timer=None):
              brief="Message members in raid "
                    "!raidmessage <location> <msg>",
              pass_context=True)
-async def raidmessage(ctx, loc, message):
+async def raidmessage(ctx, loc, *, message):
     if not await checkmod(ctx):
         return
 
@@ -394,7 +394,7 @@ async def raidmessage(ctx, loc, message):
                             continue
                         if user.mention not in mentions:
                             mentions.append(user.mention)
-                await ctx.send(message + " " + "".join(mentions))
+                await ctx.send("".join(mentions) + " " + message)
                 await ctx.message.delete()
                 return
         await ctx.send("Cannot find raid *{}*".format(loc), delete_after=10.0)
