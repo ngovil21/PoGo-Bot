@@ -635,30 +635,26 @@ async def notify_exraid(msg):
     valor = "[" + valor + "]"
     instinct = "[" + instinct + "]"
 
-    em = discord.Embed(title=msg.embeds[0].title,
-                       description=msg.embeds[0].description,
-                       url=msg.embeds[0].url)
+    embed = msg.embeds[0]
+    for i in range(0, len(embed.fields)):
+        if "Mystic" in embed.fields[i].name:
+            embed.set_field_at(i, name=str(
+                getEmoji("mystic")) + "__Mystic ({})__".format(m_tot),
+                               value=mystic, inline=True)
+        if "Valor" in embed.fields[i].name:
+            embed.set_field_at(i, name=str(
+                getEmoji("valor")) + "__Valor ({})__".format(v_tot),
+                               value=valor, inline=True)
+        if "Instinct" in embed.fields[i].name:
+            msg.embeds[0].set_field_at(i, name=str(
+                getEmoji("instinct")) + "__Instinct ({})__".format(i_tot),
+                                       value=instinct, inline=True)
+        if "Total" in embed.fields[i].name:
+            msg.embeds[0].set_field_at(i, name="**Total:**",
+                                       value="**{}**".format(total),
+                                       inline=False)
 
-    for field in msg.embeds[0].fields:
-        if field.name.startswith("Location"):
-            em.add_field(name="Location:", value=field.value, inline=True)
-        elif field.name.startswith("Date"):
-            em.add_field(name="Date:", value=field.value, inline=True)
-
-    em.set_thumbnail(url=msg.embeds[0].thumbnail.url)
-    em.add_field(name="** **", value="** **", inline=False)
-    em.add_field(
-        name=str(getEmoji("mystic")) + "__Mystic ({})__".format(m_tot),
-        value=mystic, inline=True)
-    em.add_field(name=str(getEmoji("valor")) + "__Valor ({})__".format(v_tot),
-                 value=valor, inline=True)
-    em.add_field(
-        name=str(getEmoji("instinct")) + "__Instinct ({})__".format(i_tot),
-        value=instinct, inline=False)
-    em.add_field(name="**Total:**", value=total, inline=True)
-    em.set_footer(text=msg.embeds[0].footer.text)
-
-    await msg.edit(embed=em)
+    await msg.edit(embed=embed)
 
 
 async def checkmod(ctx):
