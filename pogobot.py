@@ -85,8 +85,7 @@ async def on_reaction_add(reaction, user):
                 await msg.delete()
             return
     if reaction.message.embeds and check_footer(reaction.message, "raid"):
-        print("notifying raid {}: {} with {}".format(loc, user.name,
-                                                      reaction.emoji))
+        print("notifying raid {}: {}".format(loc, user.name))
         await notify_raid(reaction.message)
         if isinstance(reaction.emoji, str):
             await reaction.message.channel.send(
@@ -95,8 +94,7 @@ async def on_reaction_add(reaction, user):
         return
 
     if reaction.message.embeds and check_footer(reaction.message, "ex-"):
-        print("notifying exraid {}: {} with {}".format(loc, user.name,
-                                                       reaction.emoji))
+        print("notifying exraid {}: {}".format(loc, user.name))
         await notify_exraid(reaction.message)
         if isinstance(reaction.emoji, str):
             await reaction.message.channel.send(
