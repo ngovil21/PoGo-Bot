@@ -56,12 +56,10 @@ async def on_ready():
 
 @bot.event
 async def on_reaction_add(reaction, user):
-    async def confirm(msg):
-        if msg.author == user and msg.content.lower().startswith("y"):
-            await msg.delete()
+    def confirm(m):
+        if m.author == user and m.content.lower().startswith("y"):
             return True
         return False
-
     channel = reaction.message.channel
     if user == bot.user or reaction.message.author != bot.user or \
             not reaction.message.embeds:
@@ -71,17 +69,20 @@ async def on_reaction_add(reaction, user):
     if reaction.emoji == "❌":
         if check_role(user, MOD_ROLE_ID) or \
                         reaction.message.embeds[0].author == user.name:
-            await channel.send("Are you sure you would like to "
+            ask = await channel.send("Are you sure you would like to "
                                "delete raid *{}*? (yes/no)".format(loc))
             try:
-                await bot.wait_for("message", timeout=30.0, check=confirm)
+                msg = await bot.wait_for("message", timeout=30.0, check=confirm)
             except asyncio.TimeoutError:
                 await reaction.message.remove_reaction(reaction.emoji, user)
+                await ask.delete()
             else:
                 print("Raid {} deleted by user {}".format(loc, user.name))
                 await channel.send("Raid *{}* deleted by {}"
                                    .format(loc, user.name), delete_after=20.0)
                 await reaction.message.delete()
+                await ask.delete()
+                await msg.delete()
             return
     if reaction.message.embeds and check_footer(reaction.message, "raid"):
         print("notifying raid {}: {} with {}".format(loc, user.name,
