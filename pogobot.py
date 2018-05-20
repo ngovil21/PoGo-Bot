@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+import string
 
 import discord
 import os
@@ -42,6 +43,7 @@ async def on_ready():
     print("Mod Role ID: {}".format(MOD_ROLE_ID))
     print("Image URL: {}".format(IMAGE_URL))
     print("Ex-Raid Channel: {}".format(EX_RAID_CHANNEL))
+    print("GMaps Key: {}...".format(GMAPS_KEY[:5]))
     print('------')
 
     if EX_RAID_CHANNEL:
@@ -241,9 +243,7 @@ async def manualexscan(channel):
              pass_context=True)
 async def clearraids(ctx):
     def raid(msg):
-        return msg.author == bot.user and msg.embeds and \
-               msg.embeds[0].footer and \
-               msg.embeds[0].footer.text == "raid"
+        return msg.author == bot.user and check_footer(msg, "raid")
 
     if not await checkmod(ctx):
         return
@@ -281,7 +281,7 @@ async def raid(ctx, pkmn, *, locationtime):
 
     thumb = None
     descrip = ""
-    pkmn_case = pkmn[0].upper() + pkmn[1:].lower()
+    pkmn = string.capwords(pkmn, "-")
     if pkmn.lower() in locale['pokemon']:
         pkmn_id = locale['pokemon'][pkmn.lower()]
         if IMAGE_URL:
@@ -310,16 +310,22 @@ async def raid(ctx, pkmn, *, locationtime):
 
         descrip = "CP: ({}-{})  WB: ({}-{})".format(mincp20, maxcp20,
                                                     mincp25, maxcp25)
+    coords = []
+    if gyms:
+        for d in gyms:
+            if location.lower() in d.get("name", '').lower():
+                coords.append(d.get("latitude"))
+                coords.append(d.get("longitude"))
+                break
 
-        if gyms:
-            for d in gyms:
-                pass
-
-    embed = discord.Embed(title="Raid - {}".format(pkmn_case),
+    embed = discord.Embed(title="Raid - {}".format(pkmn),
                           description=descrip)
     embed.set_author(name=ctx.message.author.name)
     if thumb:
         embed.set_thumbnail(url=thumb)
+    if len(coords) == 2 and GMAPS_KEY:
+        map_image = get_static_map_url(coords[0], coords[1], api_key=GMAPS_KEY)
+        embed.set_image(url=map_image)
     embed.add_field(name="Location:", value=location, inline=True)
     embed.add_field(name="Time:", value=timer + "\n", inline=True)
     embed.add_field(name="** **", value="** **", inline=False)
@@ -381,7 +387,7 @@ async def raidtime(ctx, loc, timer=None):
                             field2.name.startswith("Date"):
                         if timer:
                             if ctx.message.author.name != msg.embeds[
-                                0].author.name or not check_role(
+                                0].author.name and not check_role(
                                     ctx.message.author, MOD_ROLE_ID):
                                 await ctx.send("You cannot edit this raid post."
                                                " Only the original poster can.",
@@ -427,18 +433,24 @@ async def raidpokemon(ctx, loc, pkmn):
             if field.name.startswith("Location") and \
                             loc.lower() in field.value.lower():
                 if ctx.message.author.name != msg.embeds[
-                    0].author.name or not check_role(ctx.message.author,
+                    0].author.name and not check_role(ctx.message.author,
                                                      MOD_ROLE_ID):
                     await ctx.send("You cannot edit this raid post. "
                                    "Only the original poster can.",
                                    delete_after=20.0)
                     await ctx.message.delete()
                     return
+
+                pkmn = string.capwords(pkmn, "-")
+                if pkmn.lower() in locale['pokemon']:
+                    pkmn_id = locale['pokemon'][pkmn.lower()]
+                    if IMAGE_URL:
+                        thumb = IMAGE_URL.format(pkmn_id)
+                        msg.embeds[0].set_thumbnail(url=thumb)
                 msg.embeds[0].title = "Raid - {}".format(pkmn)
                 await msg.edit(embed=msg.embeds[0])
-                await notify_raid(msg)
                 await ctx.send("Raid at **{}** updated to **{}**"
-                               .format(field.name, pkmn))
+                               .format(field.value, pkmn))
                 await ctx.message.delete()
                 return
     await ctx.message.delete()
@@ -468,8 +480,8 @@ async def raidmessage(ctx, loc, *, message):
                         if user.mention not in registered:
                             registered.append(user)
                 auth = ctx.message.author
-                if auth not in registered or not check_role(auth, MOD_ROLE_ID) \
-                        or msg.embeds[0].author.name != auth.name:
+                if auth not in registered and not check_role(auth, MOD_ROLE_ID) \
+                        and msg.embeds[0].author.name != auth.name:
                     await ctx.send("You are not involved with this raid.",
                                    delete_after=10.0)
                     await ctx.msg.delete()
@@ -491,7 +503,7 @@ async def raidcoords(ctx, loc, *, coords):
     if not await checkmod(ctx):
         return
 
-    coords = coords.split(", ")
+    coords = coords.replace(",", " ").replace("  ", " ").split(" ")
     if len(coords) > 2 or len(coords) < 2:
         await ctx.send("Unable to process coordinates.", delete_after=10.0)
         await ctx.message.delete()
@@ -502,11 +514,11 @@ async def raidcoords(ctx, loc, *, coords):
         for field in msg.embeds[0].fields:
             if field.name.startswith("Location") and \
                             loc.lower() in field.value.lower():
-                if msg.author.name != ctx.message.author.name or \
+                if msg.embeds[0].author.name != ctx.message.author.name and \
                         not check_role(ctx.message.author, MOD_ROLE_ID):
                     await ctx.send("You cannot set coordinates for this raid!",
                                    delete_after=10.0)
-                    await ctx.msg.delete()
+                    await ctx.message.delete()
                     return
                 if check_footer(msg, "raid"):
                     await notify_raid(msg, coords)
@@ -525,6 +537,7 @@ async def raidcoords(ctx, loc, *, coords):
 
     await ctx.send("Cannot find raid *{}*".format(loc), delete_after=10.0)
     await ctx.message.delete()
+
 
 @bot.command(aliases=["ex"],
              name="exraid",
