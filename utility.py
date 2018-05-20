@@ -37,3 +37,25 @@ def check_footer(msg, val):
             if embed.footer and embed.footer.text.startswith(val):
                 return True
     return False
+
+
+# Returns a static map url with <lat> and <lng> parameters for dynamic test
+# Taken and modified from PokeAlarm
+def get_static_map_url(lat, lng, width='250', height='125',
+                       maptype='roadmap', zoom='15', api_key=None):
+
+    center = '{},{}'.format(lat, lng)
+    query_center = 'center={}'.format(center)
+    query_markers = 'markers=color:red%7C{}'.format(center)
+    query_size = 'size={}x{}'.format(width, height)
+    query_zoom = 'zoom={}'.format(zoom)
+    query_maptype = 'maptype={}'.format(maptype)
+
+    map_ = ('https://maps.googleapis.com/maps/api/staticmap?' +
+            query_center + '&' + query_markers + '&' +
+            query_maptype + '&' + query_size + '&' + query_zoom)
+
+    if api_key is not None:
+        map_ += ('&key=%s' % api_key)
+    return map_
+
