@@ -91,7 +91,7 @@ def load_gyms(fp):
 
 
 def get_pokemon_id_from_name(pkmn):
-    return locale['pokemon'].get(pkmn.lower())
+    return locale['pokemon'].get(pkmn)
 
 
 def get_cp_range(pid, level):

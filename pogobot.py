@@ -323,7 +323,7 @@ async def raid(ctx, pkmn, *, locationtime):
     thumb = None
     descrip = ""
     pkmn = string.capwords(pkmn, "-")
-    pid = get_pokemon_id_from_name(pkmn)
+    pid = get_pokemon_id_from_name(pkmn.lower())
     if pid:
         if IMAGE_URL:
             thumb = IMAGE_URL.format(pid)
@@ -333,6 +333,8 @@ async def raid(ctx, pkmn, *, locationtime):
 
         descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20, maxcp20,
                                                     mincp25, maxcp25)
+    else:
+        print("Pokemon id not found for {}".format(pkmn))
     coords = get_gym_coords(location)
 
     embed = discord.Embed(title="Raid - {}".format(pkmn),
@@ -460,7 +462,7 @@ async def raidpokemon(ctx, loc, pkmn):
                     return
                 descrip = msg.embeds[0].description
                 pkmn = string.capwords(pkmn, "-")
-                pid = get_pokemon_id_from_name(pkmn)
+                pid = get_pokemon_id_from_name(pkmn.lower())
                 if pid:
                     if IMAGE_URL:
                         thumb = IMAGE_URL.format(pid)
@@ -472,6 +474,8 @@ async def raidpokemon(ctx, loc, pkmn):
                                                                 maxcp20,
                                                                 mincp25,
                                                                 maxcp25)
+                else:
+                    print("Pokemon id not found for {}".format(pkmn))
                 if check_footer(msg, "raid"):
                     msg.embeds[0].title = "Raid - {}".format(pkmn)
                 elif check_footer(msg, "ex-"):
@@ -531,12 +535,12 @@ async def raidmessage(ctx, loc, *, message):
 async def raidcoords(ctx, loc, *, coords):
     if not await checkmod(ctx):
         return
-
-    coords = coords.replace(",", " ").replace("  ", " ").split(" ")
-    if len(coords) > 2 or len(coords) < 2:
-        await ctx.send("Unable to process coordinates.", delete_after=10.0)
-        await ctx.message.delete()
-        return
+    if coords.lower() != "reset":
+        coords = coords.replace(",", " ").replace("  ", " ").split(" ")
+        if len(coords) > 2 or len(coords) < 2:
+            await ctx.send("Unable to process coordinates.", delete_after=10.0)
+            await ctx.message.delete()
+            return
     async for msg in ctx.message.channel.history():
         if msg.author != bot.user or not msg.embeds:
             continue
@@ -547,6 +551,13 @@ async def raidcoords(ctx, loc, *, coords):
                         not check_role(ctx.message.author, MOD_ROLE_ID):
                     await ctx.send("You cannot set coordinates for this raid!",
                                    delete_after=10.0)
+                    await ctx.message.delete()
+                    return
+                if coords == "reset":
+                    msg.embeds[0].set_image(url=None)
+                    await msg.edit(embed=msg.embeds[0])
+                    await ctx.send("Raid {} updated, coords reset."
+                                   .format(field.value), delete_after=10.0)
                     await ctx.message.delete()
                     return
                 if check_footer(msg, "raid"):
@@ -583,11 +594,10 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
         return
 
     thumb = None
-
     descrip = ""
 
-    pkmn_case = string.capwords(pkmn, '-')
-    pid = get_pokemon_id_from_name(pkmn)
+    pkmn = string.capwords(pkmn, '-')
+    pid = get_pokemon_id_from_name(pkmn.lower())
     if pid:
         if IMAGE_URL:
             thumb = IMAGE_URL.format(pid)
@@ -597,8 +607,10 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
 
         descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20, maxcp20,
                                                     mincp25, maxcp25)
+    else:
+        print("Pokemon id not found for {}".format(pkmn))
 
-    embed = discord.Embed(title="EX-Raid - {}".format(pkmn_case),
+    embed = discord.Embed(title="EX-Raid - {}".format(pkmn),
                           description=descrip)
     coords = get_gym_coords(location)
     if coords and GMAPS_KEY:
