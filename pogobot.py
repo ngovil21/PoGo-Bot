@@ -340,6 +340,7 @@ async def raid(ctx, pkmn, *, locationtime):
     embed.set_author(name=ctx.message.author.name)
     if thumb:
         embed.set_thumbnail(url=thumb)
+    coords = get_gym_coords(location)
     if coords and GMAPS_KEY:
         map_image = get_static_map_url(coords[0], coords[1], api_key=GMAPS_KEY)
         embed.set_image(url=map_image)
@@ -599,6 +600,10 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
 
     embed = discord.Embed(title="EX-Raid - {}".format(pkmn_case),
                           description=descrip)
+    coords = get_gym_coords(location)
+    if coords and GMAPS_KEY:
+        map_image = get_static_map_url(coords[0], coords[1], api_key=GMAPS_KEY)
+        embed.set_image(url=map_image)
     if thumb:
         embed.set_thumbnail(url=thumb)
     embed.add_field(name="Location:", value=location, inline=True)
