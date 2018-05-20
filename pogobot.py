@@ -23,6 +23,7 @@ MOD_ROLE_ID = None
 IMAGE_URL = ""
 EX_RAID_CHANNEL = None
 GMAPS_KEY = None
+PAYPAL_DONATION_LINK = "https://www.paypal.me/uicraids"
 
 bot = commands.Bot(command_prefix=BOT_PREFIX, case_insensitive=True,
                    description='A bot that manages Pokemon Go Discord communities.')
@@ -112,8 +113,9 @@ async def on_reaction_add(message, emoji, user):
     if emoji.name == "❌":
         if check_role(user, MOD_ROLE_ID) or \
                         message.embeds[0].author == user.name:
-            ask = await channel.send("Are you sure you would like to "
-                                     "delete raid *{}*? (yes/no)".format(loc))
+            ask = await channel.send("{} are you sure you would like to "
+                                     "delete raid *{}*? (yes/ignore)"
+                                     .format(loc, user.mention))
             try:
                 msg = await bot.wait_for("message", timeout=30.0, check=confirm)
             except asyncio.TimeoutError:
@@ -223,6 +225,15 @@ async def purge(ctx, pinned=False):
         await ctx.message.channel.purge(check=notpinned if not pinned else None)
         await asyncio.sleep(0.1)
         # await ctx.message.delete()
+
+
+@bot.command(aliases=[],
+             brief="Messages the donation link",
+             pass_context=True)
+async def donate(ctx):
+    await ctx.send("You can donate by Paypal at {}"
+                   .format(PAYPAL_DONATION_LINK))
+    await ctx.message.delete()
 
 
 @bot.command(aliases=["sex"],
