@@ -471,7 +471,10 @@ async def raidpokemon(ctx, loc, pkmn):
                                                                 maxcp20,
                                                                 mincp25,
                                                                 maxcp25)
-                msg.embeds[0].title = "Raid - {}".format(pkmn)
+                if check_footer(msg, "raid"):
+                    msg.embeds[0].title = "Raid - {}".format(pkmn)
+                elif check_footer(msg, "ex-"):
+                    msg.embeds[0].title = "Ex-Raid - {}".format(pkmn)
                 msg.embeds[0].description = descrip
                 await msg.edit(embed=msg.embeds[0])
                 await ctx.send("Raid at **{}** updated to **{}**"
