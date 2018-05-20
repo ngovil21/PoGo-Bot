@@ -43,7 +43,7 @@ async def on_ready():
     print("Mod Role ID: {}".format(MOD_ROLE_ID))
     print("Image URL: {}".format(IMAGE_URL))
     print("Ex-Raid Channel: {}".format(EX_RAID_CHANNEL))
-    print("GMaps Key: {}...".format(GMAPS_KEY[:5]))
+    print("GMaps Key: {}...".format(GMAPS_KEY[:10]))
     print('------')
 
     if EX_RAID_CHANNEL:
@@ -374,7 +374,7 @@ async def raidtime(ctx, loc, timer=None):
             if field.name.startswith("Location") and \
                             loc.lower() in field.value.lower():
                 if ctx.message.author.name != msg.embeds[
-                    0].author.name or not check_role(ctx.message.author,
+                    0].author.name and not check_role(ctx.message.author,
                                                      MOD_ROLE_ID):
                     await ctx.send("You cannot edit this raid post. "
                                    "Only the original poster can.",
@@ -529,7 +529,7 @@ async def raidcoords(ctx, loc, *, coords):
                     return
                 elif check_footer(msg, "ex-"):
                     await notify_exraid(msg, coords)
-                    await ctx.send("Ex-Raid updated to coords: ({},{})"
+                    await ctx.send("Ex-Raid {} updated to coords: ({},{})"
                                    .format(field.value, coords[0], coords[1]),
                                    delete_after=10.0)
                     await ctx.message.delete()
