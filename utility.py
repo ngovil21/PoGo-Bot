@@ -1,5 +1,11 @@
 import asyncio
+import json
 
+base_stats = {}
+locale = {}
+cp_multipliers = {}
+boss_tiers = {}
+gyms = {}
 
 def check_role(member, rolex):
     for role in member.roles:
@@ -59,3 +65,56 @@ def get_static_map_url(lat, lng, width='250', height='125',
         map_ += ('&key=%s' % api_key)
     return map_
 
+
+def load_base_stats(fp):
+    global base_stats
+    with open(fp) as f:
+        base_stats = json.load(f)
+
+
+def load_cp_multipliers(fp):
+    global cp_multipliers
+    with open(fp) as f:
+        cp_multipliers = json.load(f)
+
+
+def load_locale(fp):
+    global locale
+    with open(fp) as f:
+        locale = json.load(f)
+
+
+def load_gyms(fp):
+    global gyms
+    with open(fp) as f:
+        gyms = json.load(f)
+
+
+def get_pokemon_id_from_name(pkmn):
+    return locale['pokemon'].get(pkmn.lower())
+
+
+def get_cp_range(pid, level):
+
+    stats = base_stats["{0:03d}".format(pid)]
+    cpm = cp_multipliers['{}'.format(level)]
+
+    min_cp = int(((stats['attack'] + 10.0) *
+                       pow((stats['defense'] + 10.0), 0.5) *
+                       pow((stats['stamina'] + 10.0), 0.5) *
+                       pow(cpm, 2)) / 10.0)
+
+    max_cp = int(((stats['attack'] + 15.0) *
+                       pow((stats['defense'] + 15.0), 0.5) *
+                       pow((stats['stamina'] + 15.0), 0.5) *
+                       pow(cpm, 2)) / 10.0)
+
+    return min_cp, max_cp
+
+
+def get_gym_coords(gn):
+    for d in gyms:
+        if gn in d.get("name", '').lower():
+            return [d.get("latitude"), d.get("longitude")]
+
+    return None

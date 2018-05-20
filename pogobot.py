@@ -5,6 +5,7 @@ import string
 import discord
 import os
 
+from discord import PartialEmoji
 from discord.ext import commands
 import asyncio
 import configparser
@@ -12,7 +13,8 @@ import json
 import datetime
 
 from utility import getfieldbyname, check_role, check_footer, \
-    getrolefromname, get_static_map_url
+    getrolefromname, get_static_map_url, load_locale, load_base_stats, \
+    load_cp_multipliers, load_gyms, get_gym_coords, get_cp_range
 
 BOT_PREFIX = "!"
 BOT_TOKEN = None
@@ -24,14 +26,9 @@ GMAPS_KEY = None
 bot = commands.Bot(command_prefix=BOT_PREFIX, case_insensitive=True,
                    description='A bot that manages Pokemon Go Discord communities.')
 
-locale = None
-base_stats = None
-cp_multipliers = None
-boss_tiers = None
-gyms = None
-
 running_updater = False
 
+reaction_list = ["mystic", "valor", "instinct", "1⃣", "2⃣", "3⃣", "❌"]
 
 @bot.event
 @asyncio.coroutine
@@ -55,9 +52,56 @@ async def on_ready():
             await exupdaterloop(exchan, 5)
 
 
-# @bot.event
-# async def on_raw_reaction_add(*payload):
-#     print(payload)
+@bot.event
+# Payload( PartialEmoji, Message_id, Channel_id, User_id)
+async def on_raw_reaction_add(*payload):
+
+    if len(payload) == 4:
+        emoji = payload[0]
+        mid = payload[1]
+        channel = bot.get_channel(payload[2])
+        user = bot.get_user(payload[3])
+
+        if emoji and emoji.name not in reaction_list:
+            return
+
+        if not channel:
+            return
+        async for msg in channel.history(limit=500):
+            if msg.id != mid:
+                continue
+            if msg.author != bot.user or not msg.embeds:
+                return
+            if check_footer(msg, "raid"):
+                await notify_raid(msg)
+            elif check_footer(msg, "ex-"):
+                await notify_exraid(msg)
+
+
+@bot.event
+async def on_raw_reaction_remove(*payload):
+    # Payload( PartialEmoji, Message_id, Channel_id, User_id)
+    if len(payload) == 4:
+        emoji = payload[0]
+        mid = payload[1]
+        channel = bot.get_channel(payload[2])
+        user = bot.get_user(payload[3])
+
+        if emoji and emoji.name not in reaction_list:
+            return
+
+        if not channel:
+            return
+        async for msg in channel.history(limit=500):
+            if msg.id != mid:
+                continue
+            if msg.author != bot.user or not msg.embeds:
+                return
+            if check_footer(msg, "raid"):
+                await notify_raid(msg)
+            elif check_footer(msg, "ex-"):
+                await notify_exraid(msg)
+
 
 @bot.event
 async def on_reaction_add(reaction, user):
@@ -286,44 +330,20 @@ async def raid(ctx, pkmn, *, locationtime):
         pkmn_id = locale['pokemon'][pkmn.lower()]
         if IMAGE_URL:
             thumb = IMAGE_URL.format(pkmn_id)
-        lvl20cpm = cp_multipliers['20']
-        lvl25cpm = cp_multipliers['25']
 
-        stats = base_stats["{0:03d}".format(pkmn_id)]
+        mincp20, maxcp20 = get_cp_range(pkmn_id, 20)
+        mincp25, maxcp25 = get_cp_range(pkmn_id, 25)
 
-        mincp20 = int(((stats['attack'] + 10.0) *
-                       pow((stats['defense'] + 10.0), 0.5) *
-                       pow((stats['stamina'] + 10.0), 0.5) *
-                       pow(lvl20cpm, 2)) / 10.0)
-        maxcp20 = int(((stats['attack'] + 15.0) *
-                       pow((stats['defense'] + 15.0), 0.5) *
-                       pow((stats['stamina'] + 15.0), 0.5) *
-                       pow(lvl20cpm, 2)) / 10.0)
-        mincp25 = int(((stats['attack'] + 10.0) *
-                       pow((stats['defense'] + 10.0), 0.5) *
-                       pow((stats['stamina'] + 10.0), 0.5) *
-                       pow(lvl25cpm, 2)) / 10.0)
-        maxcp25 = int(((stats['attack'] + 15.0) *
-                       pow((stats['defense'] + 15.0), 0.5) *
-                       pow((stats['stamina'] + 15.0), 0.5) *
-                       pow(lvl25cpm, 2)) / 10.0)
-
-        descrip = "CP: ({}-{})  WB: ({}-{})".format(mincp20, maxcp20,
+        descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20, maxcp20,
                                                     mincp25, maxcp25)
-    coords = []
-    if gyms:
-        for d in gyms:
-            if location.lower() in d.get("name", '').lower():
-                coords.append(d.get("latitude"))
-                coords.append(d.get("longitude"))
-                break
+    coords = get_gym_coords(location)
 
     embed = discord.Embed(title="Raid - {}".format(pkmn),
                           description=descrip)
     embed.set_author(name=ctx.message.author.name)
     if thumb:
         embed.set_thumbnail(url=thumb)
-    if len(coords) == 2 and GMAPS_KEY:
+    if coords and GMAPS_KEY:
         map_image = get_static_map_url(coords[0], coords[1], api_key=GMAPS_KEY)
         embed.set_image(url=map_image)
     embed.add_field(name="Location:", value=location, inline=True)
@@ -440,14 +460,22 @@ async def raidpokemon(ctx, loc, pkmn):
                                    delete_after=20.0)
                     await ctx.message.delete()
                     return
-
+                descrip = msg.embeds[0].description
                 pkmn = string.capwords(pkmn, "-")
                 if pkmn.lower() in locale['pokemon']:
                     pkmn_id = locale['pokemon'][pkmn.lower()]
                     if IMAGE_URL:
                         thumb = IMAGE_URL.format(pkmn_id)
                         msg.embeds[0].set_thumbnail(url=thumb)
+                    mincp20, maxcp20 = get_cp_range(pkmn_id, 20)
+                    mincp25, maxcp25 = get_cp_range(pkmn_id, 25)
+
+                    descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20,
+                                                                maxcp20,
+                                                                mincp25,
+                                                                maxcp25)
                 msg.embeds[0].title = "Raid - {}".format(pkmn)
+                msg.embeds[0].description = descrip
                 await msg.edit(embed=msg.embeds[0])
                 await ctx.send("Raid at **{}** updated to **{}**"
                                .format(field.value, pkmn))
@@ -827,18 +855,12 @@ if __name__ == "__main__":
     IMAGE_URL = cfg['PoGoBot'].get('ImageURL') or None
     EX_RAID_CHANNEL = cfg['PoGoBot'].get('ExRaidChannel') or 0
     GMAPS_KEY = cfg['PoGoBot'].get('GMapsKey') or None
-    with open(os.path.join('locales', '{}.json'
-            .format(cfg['PoGoBot']['Locale'] or 'en'))) as f:
-        locale = json.load(f)
-    with open(os.path.join('data', 'base_stats.json')) as fb:
-        base_stats = json.load(fb)
-    with open(os.path.join('data', 'cp_multipliers.json')) as fc:
-        cp_multipliers = json.load(fc)
-    with open(os.path.join('data', 'boss_tiers.json')) as fc:
-        boss_tiers = json.load(fc)
+    load_locale(os.path.join('locales', '{}.json'
+                             .format(cfg['PoGoBot']['Locale'] or 'en')))
+    load_base_stats(os.path.join('data', 'base_stats.json'))
+    load_cp_multipliers(os.path.join('data', 'cp_multipliers.json'))
 
     if os.path.exists('gyms.json'):
-        with open('gyms.json') as fg:
-            gyms = json.load(fg)
+        load_gyms('gyms.json')
 
     bot.run(cfg['PoGoBot']['BotToken'])
