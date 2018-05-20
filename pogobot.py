@@ -14,7 +14,8 @@ import datetime
 
 from utility import getfieldbyname, check_role, check_footer, \
     getrolefromname, get_static_map_url, load_locale, load_base_stats, \
-    load_cp_multipliers, load_gyms, get_gym_coords, get_cp_range
+    load_cp_multipliers, load_gyms, get_gym_coords, get_cp_range, \
+    get_pokemon_id_from_name
 
 BOT_PREFIX = "!"
 BOT_TOKEN = None
@@ -43,13 +44,13 @@ async def on_ready():
     print("GMaps Key: {}...".format(GMAPS_KEY[:10]))
     print('------')
 
-    if EX_RAID_CHANNEL:
-        exchan = bot.get_channel(int(EX_RAID_CHANNEL))
-        if exchan:
-            running_updater = True
-            await exchan.send("Scanning ex-raid channel for updates",
-                              delete_after=30.0)
-            await exupdaterloop(exchan, 5)
+    # if EX_RAID_CHANNEL:
+    #     exchan = bot.get_channel(int(EX_RAID_CHANNEL))
+    #     if exchan:
+    #         running_updater = True
+    #         await exchan.send("Scanning ex-raid channel for updates",
+    #                           delete_after=30.0)
+    #         await exupdaterloop(exchan, 5)
 
 
 @bot.event
@@ -60,120 +61,116 @@ async def on_raw_reaction_add(*payload):
         emoji = payload[0]
         mid = payload[1]
         channel = bot.get_channel(payload[2])
-        user = bot.get_user(payload[3])
+        user = channel.guild.get_member(payload[3]) if channel \
+            else bot.get_user(payload[3])
 
-        if emoji and emoji.name not in reaction_list:
+        if not channel or (emoji and emoji.name not in reaction_list):
             return
-
-        if not channel:
-            return
-        async for msg in channel.history(limit=500):
-            if msg.id != mid:
-                continue
-            if msg.author != bot.user or not msg.embeds:
-                return
-            if check_footer(msg, "raid"):
-                await notify_raid(msg)
-            elif check_footer(msg, "ex-"):
-                await notify_exraid(msg)
+        try:
+            message = await channel.get_message(mid)
+            if message:
+                await on_reaction_add(message, emoji, user)
+        except discord.NotFound:
+            print("Message {} not found".format(mid))
 
 
 @bot.event
+# Payload( PartialEmoji, Message_id, Channel_id, User_id)
 async def on_raw_reaction_remove(*payload):
-    # Payload( PartialEmoji, Message_id, Channel_id, User_id)
     if len(payload) == 4:
         emoji = payload[0]
         mid = payload[1]
         channel = bot.get_channel(payload[2])
-        user = bot.get_user(payload[3])
+        user = channel.guild.get_member(payload[3]) if channel \
+            else bot.get_user(payload[3])
 
         if emoji and emoji.name not in reaction_list:
             return
 
         if not channel:
             return
-        async for msg in channel.history(limit=500):
-            if msg.id != mid:
-                continue
-            if msg.author != bot.user or not msg.embeds:
-                return
-            if check_footer(msg, "raid"):
-                await notify_raid(msg)
-            elif check_footer(msg, "ex-"):
-                await notify_exraid(msg)
+        try:
+            message = await channel.get_message(mid)
+            if message:
+                await on_reaction_remove(message, emoji, user)
+        except:
+            print("Message id {} not found".format(mid))
 
 
-@bot.event
-async def on_reaction_add(reaction, user):
+async def on_reaction_add(message, emoji, user):
     def confirm(m):
         if m.author == user and m.content.lower().startswith("y"):
             return True
         return False
 
-    channel = reaction.message.channel
-    if user == bot.user or reaction.message.author != bot.user or \
-            not reaction.message.embeds:
+    channel = message.channel
+    if user == bot.user or message.author != bot.user or \
+            not message.embeds:
         return
-    loc = getfieldbyname(reaction.message.embeds[0].fields, "Location")
+    loc = getfieldbyname(message.embeds[0].fields, "Location")
     loc = loc.value if loc else "Unknown"
-    if reaction.emoji == "❌":
+    if emoji.name == "❌":
         if check_role(user, MOD_ROLE_ID) or \
-                        reaction.message.embeds[0].author == user.name:
+                        message.embeds[0].author == user.name:
             ask = await channel.send("Are you sure you would like to "
                                      "delete raid *{}*? (yes/no)".format(loc))
             try:
                 msg = await bot.wait_for("message", timeout=30.0, check=confirm)
             except asyncio.TimeoutError:
-                await reaction.message.remove_reaction(reaction.emoji, user)
+                await message.remove_reaction(emoji, user)
                 await ask.delete()
             else:
                 print("Raid {} deleted by user {}".format(loc, user.name))
                 await channel.send("Raid *{}* deleted by {}"
                                    .format(loc, user.name), delete_after=20.0)
-                await reaction.message.delete()
+                await message.delete()
                 await ask.delete()
                 await msg.delete()
         return
-    if reaction.message.embeds and check_footer(reaction.message, "raid"):
+    if message.embeds and check_footer(message, "raid"):
         print("notifying raid {}: {}".format(loc, user.name))
-        await notify_raid(reaction.message)
-        if isinstance(reaction.emoji, str):
-            await reaction.message.channel.send(
+        await notify_raid(message)
+        if isinstance(emoji, str):
+            await message.channel.send(
                 "{} is bringing +{} to raid {}".format(
-                    user.name, reaction.emoji, loc))
+                    user.name, emoji, loc))
         return
 
-    if reaction.message.embeds and check_footer(reaction.message, "ex-"):
+    if message.embeds and check_footer(message, "ex-"):
         print("notifying exraid {}: {}".format(loc, user.name))
-        await notify_exraid(reaction.message)
-        if isinstance(reaction.emoji, str):
-            await reaction.message.channel.send(
+        await notify_exraid(message)
+        if isinstance(emoji, str):
+            await message.channel.send(
                 "{} is bringing +{} to ex-raid *{}*".format(
-                    user.name, reaction.emoji, loc))
+                    user.name, emoji, loc))
         return
 
 
-@bot.event
-async def on_reaction_remove(reaction, user):
-    if user == bot.user and not reaction.message.embeds:
+async def on_reaction_remove(message, emoji, user):
+    if user == bot.user and not message.embeds:
         return
-    loc = getfieldbyname(reaction.message.embeds[0].fields, "Location")
-    loc = loc.value if loc else "Unknown"
-    if check_footer(reaction.message, "raid"):
-        print("Notifying raid: User {} is leaving {}".format(user.name, loc))
-        await notify_raid(reaction.message)
-    if check_footer(reaction.message, "ex-"):
-        role_name = reaction.message.embeds[0].footer.text
+    loc = getfieldbyname(message.embeds[0].fields, "Location")
+    if loc:
+        loc = loc.value
+    else:
+        loc = "Unknown"
+    if emoji.name == "❌":
+        return
+    if check_footer(message, "raid"):
+        print("Notifying raid: User {} has left {}".format(user.name, loc))
+        await notify_raid(message)
+    if check_footer(message, "ex-"):
+        role_name = message.embeds[0].footer.text
         if role_name and role_name != "ex-raid" and \
-                not isinstance(reaction.emoji, str):
+                not isinstance(emoji, str):
             for role in user.roles:
                 if role.name == role_name:
                     await user.remove_roles(role)
-                    await reaction.message.channel.send(
+                    await message.channel.send(
                         "{} you have left *{}*".format(user.mention, role_name),
                         delete_after=10)
-        print("Notifying Ex-raid: User {} is leaving {}".format(user.name, loc))
-        await notify_exraid(reaction.message)
+        print("Notifying Ex-raid: User {} has left {}".format(user.name, loc))
+        await notify_exraid(message)
         await asyncio.sleep(0.1)
 
 
@@ -326,13 +323,13 @@ async def raid(ctx, pkmn, *, locationtime):
     thumb = None
     descrip = ""
     pkmn = string.capwords(pkmn, "-")
-    if pkmn.lower() in locale['pokemon']:
-        pkmn_id = locale['pokemon'][pkmn.lower()]
+    pid = get_pokemon_id_from_name(pkmn)
+    if pid:
         if IMAGE_URL:
-            thumb = IMAGE_URL.format(pkmn_id)
+            thumb = IMAGE_URL.format(pid)
 
-        mincp20, maxcp20 = get_cp_range(pkmn_id, 20)
-        mincp25, maxcp25 = get_cp_range(pkmn_id, 25)
+        mincp20, maxcp20 = get_cp_range(pid, 20)
+        mincp25, maxcp25 = get_cp_range(pid, 25)
 
         descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20, maxcp20,
                                                     mincp25, maxcp25)
@@ -462,13 +459,13 @@ async def raidpokemon(ctx, loc, pkmn):
                     return
                 descrip = msg.embeds[0].description
                 pkmn = string.capwords(pkmn, "-")
-                if pkmn.lower() in locale['pokemon']:
-                    pkmn_id = locale['pokemon'][pkmn.lower()]
+                pid = get_pokemon_id_from_name(pkmn)
+                if pid:
                     if IMAGE_URL:
-                        thumb = IMAGE_URL.format(pkmn_id)
+                        thumb = IMAGE_URL.format(pid)
                         msg.embeds[0].set_thumbnail(url=thumb)
-                    mincp20, maxcp20 = get_cp_range(pkmn_id, 20)
-                    mincp25, maxcp25 = get_cp_range(pkmn_id, 25)
+                    mincp20, maxcp20 = get_cp_range(pid, 20)
+                    mincp25, maxcp25 = get_cp_range(pid, 25)
 
                     descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20,
                                                                 maxcp20,
@@ -585,34 +582,16 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
 
     descrip = ""
 
-    pkmn_case = pkmn[0].upper() + pkmn[1:].lower()
-    if pkmn_case in locale['pokemon']:
-        pkmn_id = locale['pokemon'][pkmn_case]
+    pkmn_case = string.capwords(pkmn, '-')
+    pid = get_pokemon_id_from_name(pkmn)
+    if pid:
         if IMAGE_URL:
-            thumb = IMAGE_URL.format(pkmn_id)
-        lvl20cpm = cp_multipliers['20']
-        lvl25cpm = cp_multipliers['25']
+            thumb = IMAGE_URL.format(pid)
 
-        stats = base_stats["{0:03d}".format(pkmn_id)]
+        mincp20, maxcp20 = get_cp_range(pid, 20)
+        mincp25, maxcp25 = get_cp_range(pid, 25)
 
-        mincp20 = int(((stats['attack'] + 10.0) *
-                       pow((stats['defense'] + 10.0), 0.5) *
-                       pow((stats['stamina'] + 10.0), 0.5) *
-                       pow(lvl20cpm, 2)) / 10.0)
-        maxcp20 = int(((stats['attack'] + 15.0) *
-                       pow((stats['defense'] + 15.0), 0.5) *
-                       pow((stats['stamina'] + 15.0), 0.5) *
-                       pow(lvl20cpm, 2)) / 10.0)
-        mincp25 = int(((stats['attack'] + 10.0) *
-                       pow((stats['defense'] + 10.0), 0.5) *
-                       pow((stats['stamina'] + 10.0), 0.5) *
-                       pow(lvl25cpm, 2)) / 10.0)
-        maxcp25 = int(((stats['attack'] + 15.0) *
-                       pow((stats['defense'] + 15.0), 0.5) *
-                       pow((stats['stamina'] + 15.0), 0.5) *
-                       pow(lvl25cpm, 2)) / 10.0)
-
-        descrip = "CP: ({}-{})  WB: ({}-{})".format(mincp20, maxcp20,
+        descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20, maxcp20,
                                                     mincp25, maxcp25)
 
     embed = discord.Embed(title="EX-Raid - {}".format(pkmn_case),
