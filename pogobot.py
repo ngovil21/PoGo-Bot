@@ -276,8 +276,8 @@ async def exupdater(ctx, minutes=5):
                    "!everyone [message]",
              pass_context=True)
 async def everyone(ctx,*, message):
-    ctx.send("@everyone ".format(message))
-    ctx.message.delete()
+    await ctx.send("@everyone ".format(message))
+    await ctx.message.delete()
 
 
 async def exupdaterloop(channel, minutes):
