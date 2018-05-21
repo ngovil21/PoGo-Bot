@@ -123,8 +123,9 @@ async def on_reaction_add(message, emoji, user):
                 await ask.delete()
             else:
                 print("Raid {} deleted by user {}".format(loc, user.name))
-                await channel.send("Raid *{}* deleted by {}"
-                                   .format(loc, user.name), delete_after=20.0)
+                await channel.send("Raid **{}** deleted by {}"
+                                   .format(loc, user.mention),
+                                   delete_after=20.0)
                 await message.delete()
                 await ask.delete()
                 await msg.delete()
@@ -346,7 +347,6 @@ async def raid(ctx, pkmn, *, locationtime):
                                                     mincp25, maxcp25)
     else:
         print("Pokemon id not found for {}".format(pkmn))
-    coords = get_gym_coords(location)
 
     embed = discord.Embed(title="Raid - {}".format(pkmn),
                           description=descrip)
@@ -358,7 +358,7 @@ async def raid(ctx, pkmn, *, locationtime):
         map_image = get_static_map_url(coords[0], coords[1], api_key=GMAPS_KEY)
         embed.set_image(url=map_image)
     embed.add_field(name="Location:", value=location, inline=True)
-    embed.add_field(name="Time:", value=timer + "\n", inline=True)
+    embed.add_field(name="Proposed Time:", value=timer + "\n", inline=True)
     embed.add_field(name="** **", value="** **", inline=False)
     embed.add_field(name=str(getEmoji("mystic")) + "__Mystic (0)__", value="[]",
                     inline=True)
@@ -414,7 +414,7 @@ async def raidtime(ctx, loc, timer=None):
                     return
                 for i in range(0, len(msg.embeds[0].fields)):
                     field2 = msg.embeds[0].fields[i]
-                    if field2.name.startswith("Time") or \
+                    if "Time:" in field2.name or \
                             field2.name.startswith("Date"):
                         if timer:
                             if ctx.message.author.name != msg.embeds[
