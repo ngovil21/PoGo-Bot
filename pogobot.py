@@ -271,6 +271,15 @@ async def exupdater(ctx, minutes=5):
     await exupdaterloop(ctx.message.channel, minutes)
 
 
+@bot.command(aliases=["eo"],
+             brief="[MOD] Send message tagging @everyone "
+                   "!everyone [message]",
+             pass_context=True)
+async def everyone(ctx,*, message):
+    ctx.send("@everyone ".format(message))
+    ctx.message.delete()
+
+
 async def exupdaterloop(channel, minutes):
     while running_updater:
         await manualexscan(channel)
@@ -510,7 +519,7 @@ async def raidmessage(ctx, loc, *, message):
     if not await checkmod(ctx):
         return
 
-    async for msg in ctx.message.channel.history():
+    async for msg in ctx.message.channel.history(limit=1000):
         if msg.author != bot.user or not msg.embeds:
             continue
         for field in msg.embeds[0].fields:
@@ -668,42 +677,61 @@ async def notify_raid(msg, coords=None):
     v_tot = 0
     i_tot = 0
     total = 0
+    user_guests = {}
     for reaction in msg.reactions:
         if isinstance(reaction.emoji, str):
             if reaction.emoji == "1⃣":
                 total += reaction.count - 1
+                users = await reaction.users().flatten()
+                for user in users:
+                    user_guests[user.name] = user_guests.get(user.name, 0) + 1
             elif reaction.emoji == "2⃣":
                 total += 2 * (reaction.count - 1)
+                users = await reaction.users().flatten()
+                for user in users:
+                    user_guests[user.name] = user_guests.get(user.name, 0) + 2
             elif reaction.emoji == "3⃣":
                 total += 3 * (reaction.count - 1)
-        else:
-            if reaction.emoji.name == 'mystic':
                 users = await reaction.users().flatten()
                 for user in users:
-                    if user == bot.user:
-                        continue
-                    mystic += user.mention + ","
-                    m_tot += 1
-                    total += 1
-                mystic = mystic.rstrip(",")
-            elif reaction.emoji.name == 'valor':
-                users = await reaction.users().flatten()
-                for user in users:
-                    if user == bot.user:
-                        continue
-                    valor += user.mention + ","
-                    v_tot += 1
-                    total += 1
-                valor = valor.rstrip(", ")
-            elif reaction.emoji.name == 'instinct':
-                users = await reaction.users().flatten()
-                for user in users:
-                    if user == bot.user:
-                        continue
-                    instinct += user.mention + ","
-                    i_tot += 1
-                    total += 1
-                instinct = instinct.rstrip(", ")
+                    user_guests[user.name] = user_guests.get(user.name, 0) + 3
+    for reaction in msg.reactions:
+        if reaction.emoji.name == 'mystic':
+            users = await reaction.users().flatten()
+            for user in users:
+                if user == bot.user:
+                    continue
+                guest = "+{}".format(
+                    user_guests.get(user.name), 0) if user.name in user_guests \
+                    else ""
+                mystic += user.mention + guest + ","
+                m_tot += 1
+                total += 1
+            mystic = mystic.rstrip(",")
+        elif reaction.emoji.name == 'valor':
+            users = await reaction.users().flatten()
+            for user in users:
+                if user == bot.user:
+                    continue
+                guest = "+{}".format(
+                    user_guests.get(user.name), 0) if user.name in user_guests \
+                    else ""
+                valor += user.mention + guest + ","
+                v_tot += 1
+                total += 1
+            valor = valor.rstrip(", ")
+        elif reaction.emoji.name == 'instinct':
+            users = await reaction.users().flatten()
+            for user in users:
+                if user == bot.user:
+                    continue
+                guest = "+{}".format(
+                    user_guests.get(user.name), 0) if user.name in user_guests \
+                    else ""
+                instinct += user.mention + guest + ","
+                i_tot += 1
+                total += 1
+            instinct = instinct.rstrip(", ")
     mystic = "[" + mystic + "]"
     valor = "[" + valor + "]"
     instinct = "[" + instinct + "]"
