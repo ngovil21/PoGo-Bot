@@ -707,7 +707,7 @@ async def notify_raid(msg, coords=None):
                 mystic += user.mention + guest + ","
                 m_tot += 1
                 total += 1
-            mystic = mystic.rstrip(",")
+            mystic = mystic.rstrip(", ")
         elif reaction.emoji.name == 'valor':
             users = await reaction.users().flatten()
             for user in users:
@@ -732,9 +732,9 @@ async def notify_raid(msg, coords=None):
                 i_tot += 1
                 total += 1
             instinct = instinct.rstrip(", ")
-    mystic = "[" + mystic + "]"
-    valor = "[" + valor + "]"
-    instinct = "[" + instinct + "]"
+    mystic = "[{}]".format(mystic)
+    valor = "[{}]".format(valor)
+    instinct = "[{}]".format(instinct)
 
     embed = msg.embeds[0]
 
@@ -775,74 +775,85 @@ async def notify_exraid(msg, coords=None):
     role = None
     if role_name and role_name != "ex-raid":
         role = await getrolefromname(msg.guild, role_name, True)
+    user_guests = {}
     for reaction in msg.reactions:
         if isinstance(reaction.emoji, str):
             if reaction.emoji == "1⃣":
                 total += reaction.count - 1
+                users = await reaction.users().flatten()
+                for user in users:
+                    user_guests[user.name] = user_guests.get(user.name, 0) + 1
             elif reaction.emoji == "2⃣":
                 total += 2 * (reaction.count - 1)
+                users = await reaction.users().flatten()
+                for user in users:
+                    user_guests[user.name] = user_guests.get(user.name, 0) + 2
             elif reaction.emoji == "3⃣":
                 total += 3 * (reaction.count - 1)
-            elif reaction.emoji == "❌":
                 users = await reaction.users().flatten()
                 for user in users:
-                    if user == bot.user:
-                        continue
-                    if check_role(user, MOD_ROLE_ID):
-                        await msg.delete()
-                        return
-        else:
-            if reaction.emoji.name == 'mystic':
-                users = await reaction.users().flatten()
-                for user in users:
-                    if user == bot.user:
-                        continue
-                    if role and role not in user.roles:
-                        await user.add_roles(role, atomic=True)
-                        print("User {} added to role {}".format(user.name,
-                                                                role_name))
-                        await msg.channel.send("{} you have been added to {}".
-                                               format(user.mention, role_name),
-                                               delete_after=30.0)
-                    mystic += user.mention + ","
-                    m_tot += 1
-                    total += 1
-                mystic = mystic.rstrip(",")
-            elif reaction.emoji.name == 'valor':
-                users = await reaction.users().flatten()
-                for user in users:
-                    if user == bot.user:
-                        continue
-                    if role and role not in user.roles:
-                        await user.add_roles(role, atomic=True)
-                        print("User {} added to role {}".format(user.name,
-                                                                role_name))
-                        await msg.channel.send("{} you have been added to {}".
-                                               format(user.mention, role_name),
-                                               delete_after=30.0)
-                    valor += user.mention + ","
-                    v_tot += 1
-                    total += 1
-                valor = valor.rstrip(", ")
-            elif reaction.emoji.name == 'instinct':
-                users = await reaction.users().flatten()
-                for user in users:
-                    if user == bot.user:
-                        continue
-                    if role and role not in user.roles:
-                        await user.add_roles(role, atomic=True)
-                        print("User {} added to role {}".format(user.name,
-                                                                role_name))
-                        await msg.channel.send("{} you have been added to {}".
-                                               format(user.mention, role_name),
-                                               delete_after=30.0)
-                    instinct += user.mention + ","
-                    i_tot += 1
-                    total += 1
-                instinct = instinct.rstrip(", ")
-    mystic = "[" + mystic + "]"
-    valor = "[" + valor + "]"
-    instinct = "[" + instinct + "]"
+                    user_guests[user.name] = user_guests.get(user.name, 0) + 3
+    for reaction in msg.reactions:
+        if reaction.emoji.name == 'mystic':
+            users = await reaction.users().flatten()
+            for user in users:
+                if user == bot.user:
+                    continue
+                if role and role not in user.roles:
+                    await user.add_roles(role, atomic=True)
+                    print("User {} added to role {}".format(user.name,
+                                                            role_name))
+                    await msg.channel.send("{} you have been added to {}".
+                                           format(user.mention, role_name),
+                                           delete_after=30.0)
+                guest = "+{}".format(
+                    user_guests.get(user.name), 0) if user.name in user_guests \
+                    else ""
+                mystic += user.mention + guest + ","
+                m_tot += 1
+                total += 1
+            mystic = mystic.rstrip(",")
+        elif reaction.emoji.name == 'valor':
+            users = await reaction.users().flatten()
+            for user in users:
+                if user == bot.user:
+                    continue
+                if role and role not in user.roles:
+                    await user.add_roles(role, atomic=True)
+                    print("User {} added to role {}".format(user.name,
+                                                            role_name))
+                    await msg.channel.send("{} you have been added to {}".
+                                           format(user.mention, role_name),
+                                           delete_after=30.0)
+                guest = "+{}".format(
+                    user_guests.get(user.name), 0) if user.name in user_guests \
+                    else ""
+                valor += user.mention + guest + ","
+                v_tot += 1
+                total += 1
+            valor = valor.rstrip(", ")
+        elif reaction.emoji.name == 'instinct':
+            users = await reaction.users().flatten()
+            for user in users:
+                if user == bot.user:
+                    continue
+                if role and role not in user.roles:
+                    await user.add_roles(role, atomic=True)
+                    print("User {} added to role {}".format(user.name,
+                                                            role_name))
+                    await msg.channel.send("{} you have been added to {}".
+                                           format(user.mention, role_name),
+                                           delete_after=30.0)
+                guest = "+{}".format(
+                    user_guests.get(user.name), 0) if user.name in user_guests \
+                    else ""
+                instinct += user.mention + guest + ","
+                i_tot += 1
+                total += 1
+            instinct = instinct.rstrip(", ")
+    mystic = "[{}]".format(mystic)
+    valor = "[{}]".format(valor)
+    instinct = "[{}]".format(instinct)
 
     embed = msg.embeds[0]
 
