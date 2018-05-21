@@ -696,6 +696,8 @@ async def notify_raid(msg, coords=None):
                 for user in users:
                     user_guests[user.name] = user_guests.get(user.name, 0) + 3
     for reaction in msg.reactions:
+        if isinstance(reaction.emoji, str):
+            continue
         if reaction.emoji.name == 'mystic':
             users = await reaction.users().flatten()
             for user in users:
