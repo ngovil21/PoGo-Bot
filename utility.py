@@ -1,11 +1,15 @@
 import asyncio
 import json
+import re
+from fuzzywuzzy import fuzz, process
 
 base_stats = {}
 locale = {}
 cp_multipliers = {}
 boss_tiers = {}
 gyms = {}
+gym_names = []
+
 
 def check_role(member, rolex):
     for role in member.roles:
@@ -88,7 +92,9 @@ def load_gyms(fp):
     global gyms
     with open(fp) as f:
         gyms = json.load(f)
-
+    for d in gyms:
+        if 'name'in d:
+            gym_names.append(d['name'])
 
 def get_pokemon_id_from_name(pkmn):
     return locale['pokemon'].get(pkmn)
@@ -113,8 +119,16 @@ def get_cp_range(pid, level):
 
 
 def get_gym_coords(gn):
+    name, match = process.extractOne(gn, gym_names, scorer=fuzz.partial_ratio,
+                                     score_cutoff=0)
+    print("{} matched {} with score {}".format(gn, name, match))
     for d in gyms:
-        if gn in d.get("name", '').lower():
+        if gn.lower() in d.get("name", '').lower():
             return [d.get("latitude"), d.get("longitude")]
 
     return None
+
+
+# Replace non-ascii characters with '?' and print
+def printr(s):
+    print(re.sub(r'[^\x00-\x7F]', '?', s))

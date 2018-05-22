@@ -5,17 +5,15 @@ import string
 import discord
 import os
 
-from discord import PartialEmoji
 from discord.ext import commands
 import asyncio
 import configparser
-import json
 import datetime
 
 from utility import getfieldbyname, check_role, check_footer, \
     getrolefromname, get_static_map_url, load_locale, load_base_stats, \
     load_cp_multipliers, load_gyms, get_gym_coords, get_cp_range, \
-    get_pokemon_id_from_name
+    get_pokemon_id_from_name, printr
 
 BOT_PREFIX = "!"
 BOT_TOKEN = None
@@ -36,14 +34,14 @@ reaction_list = ["mystic", "valor", "instinct", "1⃣", "2⃣", "3⃣", "❌"]
 @asyncio.coroutine
 async def on_ready():
     global running_updater
-    print(discord.version_info)
-    print('Logged in as: {}'.format(bot.user.name))
-    print('Bot ID: {}'.format(bot.user.id))
-    print("Mod Role ID: {}".format(MOD_ROLE_ID))
-    print("Image URL: {}".format(IMAGE_URL))
-    print("Ex-Raid Channel: {}".format(EX_RAID_CHANNEL))
-    print("GMaps Key: {}...".format(GMAPS_KEY[:10]))
-    print('------')
+    printr(discord.version_info)
+    printr('Logged in as: {}'.format(bot.user.name))
+    printr('Bot ID: {}'.format(bot.user.id))
+    printr("Mod Role ID: {}".format(MOD_ROLE_ID))
+    printr("Image URL: {}".format(IMAGE_URL))
+    printr("Ex-Raid Channel: {}".format(EX_RAID_CHANNEL))
+    printr("GMaps Key: {}...".format(GMAPS_KEY[:10]))
+    printr('------')
 
     # if EX_RAID_CHANNEL:
     #     exchan = bot.get_channel(int(EX_RAID_CHANNEL))
@@ -72,7 +70,7 @@ async def on_raw_reaction_add(*payload):
             if message:
                 await on_reaction_add(message, emoji, user)
         except discord.NotFound:
-            print("Message {} not found".format(mid))
+            printr("Message {} not found".format(mid))
 
 
 @bot.event
@@ -95,7 +93,7 @@ async def on_raw_reaction_remove(*payload):
             if message:
                 await on_reaction_remove(message, emoji, user)
         except:
-            print("Message id {} not found".format(mid))
+            printr("Message id {} not found".format(mid))
 
 
 async def on_reaction_add(message, emoji, user):
@@ -122,7 +120,7 @@ async def on_reaction_add(message, emoji, user):
                 await message.remove_reaction(emoji, user)
                 await ask.delete()
             else:
-                print("Raid {} deleted by user {}".format(loc, user.name))
+                printr("Raid {} deleted by user {}".format(loc, user.name))
                 await channel.send("Raid **{}** deleted by {}"
                                    .format(loc, user.mention),
                                    delete_after=20.0)
@@ -131,7 +129,7 @@ async def on_reaction_add(message, emoji, user):
                 await msg.delete()
         return
     if message.embeds and check_footer(message, "raid"):
-        print("notifying raid {}: {}".format(loc, user.name))
+        printr("notifying raid {}: {}".format(loc, user.name))
         await notify_raid(message)
         if isinstance(emoji, str):
             await message.channel.send(
@@ -140,7 +138,7 @@ async def on_reaction_add(message, emoji, user):
         return
 
     if message.embeds and check_footer(message, "ex-"):
-        print("notifying exraid {}: {}".format(loc, user.name))
+        printr("notifying exraid {}: {}".format(loc, user.name))
         await notify_exraid(message)
         if isinstance(emoji, str):
             await message.channel.send(
@@ -160,7 +158,7 @@ async def on_reaction_remove(message, emoji, user):
     if emoji.name == "❌":
         return
     if check_footer(message, "raid"):
-        print("Notifying raid: User {} has left {}".format(user.name, loc))
+        printr("Notifying raid: User {} has left {}".format(user.name, loc))
         await notify_raid(message)
     if check_footer(message, "ex-"):
         role_name = message.embeds[0].footer.text
@@ -172,7 +170,7 @@ async def on_reaction_remove(message, emoji, user):
                     await message.channel.send(
                         "{} you have left *{}*".format(user.mention, role_name),
                         delete_after=10)
-        print("Notifying Ex-raid: User {} has left {}".format(user.name, loc))
+        printr("Notifying Ex-raid: User {} has left {}".format(user.name, loc))
         await notify_exraid(message)
         await asyncio.sleep(0.1)
 
@@ -204,7 +202,7 @@ async def clearrole(ctx, rolex):
     for member in members:
         for role in member.roles:
             if role.name.lower() == rolex.lower():
-                print("Found member {} with role {}".format(member.name,
+                printr("Found member {} with role {}".format(member.name,
                                                             role.name))
                 await member.remove_roles(role)
                 count += 1
@@ -355,7 +353,7 @@ async def raid(ctx, pkmn, *, locationtime):
         descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20, maxcp20,
                                                     mincp25, maxcp25)
     else:
-        print("Pokemon id not found for {}".format(pkmn))
+        printr("Pokemon id not found for {}".format(pkmn))
 
     embed = discord.Embed(title="Raid - {}".format(pkmn),
                           description=descrip)
@@ -495,7 +493,7 @@ async def raidpokemon(ctx, loc, pkmn):
                                                                 mincp25,
                                                                 maxcp25)
                 else:
-                    print("Pokemon id not found for {}".format(pkmn))
+                    printr("Pokemon id not found for {}".format(pkmn))
                 if check_footer(msg, "raid"):
                     msg.embeds[0].title = "Raid - {}".format(pkmn)
                 elif check_footer(msg, "ex-"):
@@ -628,7 +626,7 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
         descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20, maxcp20,
                                                     mincp25, maxcp25)
     else:
-        print("Pokemon id not found for {}".format(pkmn))
+        printr("Pokemon id not found for {}".format(pkmn))
 
     embed = discord.Embed(title="EX-Raid - {}".format(pkmn),
                           description=descrip)
@@ -803,7 +801,7 @@ async def notify_exraid(msg, coords=None):
                     continue
                 if role and role not in user.roles:
                     await user.add_roles(role, atomic=True)
-                    print("User {} added to role {}".format(user.name,
+                    printr("User {} added to role {}".format(user.name,
                                                             role_name))
                     await msg.channel.send("{} you have been added to {}".
                                            format(user.mention, role_name),
@@ -822,7 +820,7 @@ async def notify_exraid(msg, coords=None):
                     continue
                 if role and role not in user.roles:
                     await user.add_roles(role, atomic=True)
-                    print("User {} added to role {}".format(user.name,
+                    printr("User {} added to role {}".format(user.name,
                                                             role_name))
                     await msg.channel.send("{} you have been added to {}".
                                            format(user.mention, role_name),
@@ -841,7 +839,7 @@ async def notify_exraid(msg, coords=None):
                     continue
                 if role and role not in user.roles:
                     await user.add_roles(role, atomic=True)
-                    print("User {} added to role {}".format(user.name,
+                    printr("User {} added to role {}".format(user.name,
                                                             role_name))
                     await msg.channel.send("{} you have been added to {}".
                                            format(user.mention, role_name),
@@ -886,7 +884,7 @@ async def notify_exraid(msg, coords=None):
 
 async def checkmod(ctx):
     if not check_role(ctx.message.author, MOD_ROLE_ID):
-        print("Not a mod!")
+        printr("Not a mod!")
         await ctx.send("You must be a mod in order to use " +
                        "this command!", delete_after=10)
         await ctx.message.delete()
