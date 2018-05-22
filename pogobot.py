@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+import re
 import string
 
 import discord
@@ -8,12 +9,12 @@ import os
 from discord.ext import commands
 import asyncio
 import configparser
-import datetime
+from datetime import datetime, timedelta
 
 from utility import getfieldbyname, check_role, check_footer, \
     getrolefromname, get_static_map_url, load_locale, load_base_stats, \
     load_cp_multipliers, load_gyms, get_gym_coords, get_cp_range, \
-    get_pokemon_id_from_name, printr
+    get_pokemon_id_from_name, printr, pokemon_match
 
 BOT_PREFIX = "!"
 BOT_TOKEN = None
@@ -274,7 +275,7 @@ async def exupdater(ctx, minutes=5):
                    "!everyone [message]",
              pass_context=True)
 async def everyone(ctx,*, message):
-    await ctx.send("@everyone ".format(message))
+    await ctx.send("@everyone {}".format(message))
     await ctx.message.delete()
 
 
@@ -323,8 +324,16 @@ async def raid(ctx, pkmn, *, locationtime):
         return
 
     lt = locationtime.split()
-    location = (" ".join(lt[:-1])).strip()
-    timer = lt[-1].strip()
+    if len(lt) > 1:
+        if re.search(r'[0-9]', str(lt[-1])):
+            location = (" ".join(lt[:-1])).strip()
+            timer = lt[-1].strip()
+        else:
+            location = (" ".join(lt)).strip()
+            timer = "Unset"
+    else:
+        location = (" ".join(lt)).strip()
+        timer = "Unset"
 
     async for msg in ctx.message.channel.history():
         if msg.author == bot.user and msg.embeds:
@@ -332,8 +341,8 @@ async def raid(ctx, pkmn, *, locationtime):
             if loc and location.lower() == loc.value.lower() and pkmn.lower() in \
                     msg.embeds[0].title.lower():
                 if (datetime.utcnow() - msg.created_at) < \
-                        datetime.timedelta(minutes=30):
-                    await ctx.send("Raid at {} already exists,please use "
+                        timedelta(minutes=30):
+                    await ctx.send("Raid at {} already exists, please use "
                                    "previous post".format(loc.value),
                                    delete_after=10.0)
                     await ctx.message.delete()
@@ -341,6 +350,9 @@ async def raid(ctx, pkmn, *, locationtime):
 
     thumb = None
     descrip = ""
+    match = pokemon_match(pkmn)
+    if match:
+        pkmn = match
     pkmn = string.capwords(pkmn, "-")
     pid = get_pokemon_id_from_name(pkmn.lower())
     if pid:
@@ -479,6 +491,9 @@ async def raidpokemon(ctx, loc, pkmn):
                     await ctx.message.delete()
                     return
                 descrip = msg.embeds[0].description
+                match = pokemon_match(pkmn)
+                if match:
+                    pkmn = match
                 pkmn = string.capwords(pkmn, "-")
                 pid = get_pokemon_id_from_name(pkmn.lower())
                 if pid:
@@ -494,6 +509,7 @@ async def raidpokemon(ctx, loc, pkmn):
                                                                 maxcp25)
                 else:
                     printr("Pokemon id not found for {}".format(pkmn))
+                    msg.embeds[0].set_thumbnail(None)
                 if check_footer(msg, "raid"):
                     msg.embeds[0].title = "Raid - {}".format(pkmn)
                 elif check_footer(msg, "ex-"):

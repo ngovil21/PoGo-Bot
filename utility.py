@@ -19,7 +19,6 @@ def check_role(member, rolex):
     return False
 
 
-
 async def getrolefromname(guild, role_name, create_new_role=False):
     roles = guild.roles
     role = None
@@ -96,8 +95,17 @@ def load_gyms(fp):
         if 'name'in d:
             gym_names.append(d['name'])
 
+
 def get_pokemon_id_from_name(pkmn):
     return locale['pokemon'].get(pkmn)
+
+
+def pokemon_match(pkmn):
+    result = process.extractOne(pkmn, locale['pokemon'].keys(),
+                                scorer=fuzz.ratio, score_cutoff=75)
+    if result:
+        return result[0]
+    return None
 
 
 def get_cp_range(pid, level):
@@ -119,11 +127,17 @@ def get_cp_range(pid, level):
 
 
 def get_gym_coords(gn):
-    name, match = process.extractOne(gn, gym_names, scorer=fuzz.partial_ratio,
-                                     score_cutoff=0)
-    print("{} matched {} with score {}".format(gn, name, match))
+    results = process.extractBests(gn, gym_names, scorer=fuzz.partial_ratio,
+                                   score_cutoff=80)
+    if not results:
+        return None
+    if len(results) > 1:
+        printr("Too many matches for {}".format(gn))
+        return None
+    name, match = results[0]
+    printr("{} matched {} with score {}".format(gn, name, match))
     for d in gyms:
-        if gn.lower() in d.get("name", '').lower():
+        if name == d.get("name"):
             return [d.get("latitude"), d.get("longitude")]
 
     return None
@@ -131,4 +145,4 @@ def get_gym_coords(gn):
 
 # Replace non-ascii characters with '?' and print
 def printr(s):
-    print(re.sub(r'[^\x00-\x7F]', '?', s))
+    print(re.sub(r'[^\x00-\x7F]', '?', str(s)))
