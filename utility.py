@@ -128,12 +128,15 @@ def get_cp_range(pid, level):
 
 def get_gym_coords(gn):
     results = process.extractBests(gn, gym_names, scorer=fuzz.partial_ratio,
-                                   score_cutoff=80)
+                                   score_cutoff=70)
     if not results:
         return None
     if len(results) > 1:
         printr("Too many matches for {}".format(gn))
-        return None
+        results = [process.extractOne(gn, gym_names, scorer=fuzz.ratio,
+                                      score_cutoff=70)]
+        if not results:
+            return None
     name, match = results[0]
     printr("{} matched {} with score {}".format(gn, name, match))
     for d in gyms:
