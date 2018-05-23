@@ -132,11 +132,14 @@ def get_gym_coords(gn):
     if not results:
         return None
     if len(results) > 1:
-        printr("Too many matches for {}".format(gn))
-        results = [process.extractOne(gn, gym_names, scorer=fuzz.ratio,
-                                      score_cutoff=70)]
+        results = process.extractBests(gn, gym_names, scorer=fuzz.ratio,
+                                  limit=2, score_cutoff=60)
         if not results:
             return None
+        if len(results) > 1:
+            if abs(results[0][1] - results[1][1]) < 5:
+                printr("Too many similar results for {}".format(gn))
+                return None
     name, match = results[0]
     printr("{} matched {} with score {}".format(gn, name, match))
     for d in gyms:
