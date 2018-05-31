@@ -11,16 +11,12 @@ gyms = {}
 gym_names = []
 
 
-def check_role(member, rolex):
-    return check_roles(member, [rolex])
-
-
 def check_roles(member, roles):
     if not isinstance(roles, list):
         roles = [roles]
-    for role in member,roles:
+    for role in member.roles:
         for r in roles:
-            if str(role.id) == r or r.name.lower() == r.lower():
+            if str(role.id) == str(r) or role.name.lower() == str(r).lower():
                 return True
     return False
 
