@@ -12,10 +12,16 @@ gym_names = []
 
 
 def check_role(member, rolex):
-    for role in member.roles:
-        if (str(role.id) == rolex) or (
-                    str(role.name.lower()) == str(rolex.lower())):
-            return True
+    return check_roles(member, [rolex])
+
+
+def check_roles(member, roles):
+    if not isinstance(roles, list):
+        roles = [roles]
+    for role in member,roles:
+        for r in roles:
+            if str(role.id) == r or r.name.lower() == r.lower():
+                return True
     return False
 
 
@@ -52,7 +58,6 @@ def check_footer(msg, val):
 # Taken and modified from PokeAlarm
 def get_static_map_url(lat, lng, width='250', height='125',
                        maptype='roadmap', zoom='15', api_key=None):
-
     center = '{},{}'.format(lat, lng)
     query_center = 'center={}'.format(center)
     query_markers = 'markers=color:red%7C{}'.format(center)
@@ -92,7 +97,7 @@ def load_gyms(fp):
     with open(fp) as f:
         gyms = json.load(f)
     for d in gyms:
-        if 'name'in d:
+        if 'name' in d:
             gym_names.append(d['name'])
 
 
@@ -109,19 +114,18 @@ def pokemon_match(pkmn):
 
 
 def get_cp_range(pid, level):
-
     stats = base_stats["{0:03d}".format(pid)]
     cpm = cp_multipliers['{}'.format(level)]
 
     min_cp = int(((stats['attack'] + 10.0) *
-                       pow((stats['defense'] + 10.0), 0.5) *
-                       pow((stats['stamina'] + 10.0), 0.5) *
-                       pow(cpm, 2)) / 10.0)
+                  pow((stats['defense'] + 10.0), 0.5) *
+                  pow((stats['stamina'] + 10.0), 0.5) *
+                  pow(cpm, 2)) / 10.0)
 
     max_cp = int(((stats['attack'] + 15.0) *
-                       pow((stats['defense'] + 15.0), 0.5) *
-                       pow((stats['stamina'] + 15.0), 0.5) *
-                       pow(cpm, 2)) / 10.0)
+                  pow((stats['defense'] + 15.0), 0.5) *
+                  pow((stats['stamina'] + 15.0), 0.5) *
+                  pow(cpm, 2)) / 10.0)
 
     return min_cp, max_cp
 
@@ -133,7 +137,7 @@ def get_gym_coords(gn):
         return None
     if len(results) > 1:
         results = process.extractBests(gn, gym_names, scorer=fuzz.ratio,
-                                  limit=2, score_cutoff=60)
+                                       limit=2, score_cutoff=60)
         if not results:
             return None
         if len(results) > 1:
