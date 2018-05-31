@@ -41,6 +41,7 @@ async def on_ready():
     printr(discord.version_info)
     printr('Logged in as: {}'.format(bot.user.name))
     printr('Bot ID: {}'.format(bot.user.id))
+    printr('Raid Role ID: ' + ','.join(RAID_ROLE_ID))
     printr("Mod Role ID: {}".format(MOD_ROLE_ID))
     printr("Image URL: {}".format(IMAGE_URL))
     printr("Ex-Raid Channel: {}".format(EX_RAID_CHANNEL))
