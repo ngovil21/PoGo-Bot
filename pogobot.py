@@ -923,6 +923,9 @@ if __name__ == "__main__":
     bot.command_prefix = cfg['PoGoBot']['BotPrefix'] or "!"
     MOD_ROLE_ID = cfg['PoGoBot'].get('ModRoleID') or -1
     RAID_ROLE_ID = cfg['PoGoBot'].get('RaidRoleID') or -1
+    if ',' in str(RAID_ROLE_ID):
+        RAID_ROLE_ID = [x.strip() for x in RAID_ROLE_ID.split(",")]
+
     ANYONE_RAID_POST = cfg['PoGoBot'].get('AnyoneRaidPost') or False
     IMAGE_URL = cfg['PoGoBot'].get('ImageURL') or None
     EX_RAID_CHANNEL = cfg['PoGoBot'].get('ExRaidChannel') or 0
