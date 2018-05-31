@@ -322,7 +322,7 @@ async def clearraids(ctx):
              pass_context=True)
 async def raid(ctx, pkmn, *, locationtime):
 
-    if ANYONE_RAID_POST or not check_roles(ctx.message.author, RAID_ROLE_ID):
+    if not ANYONE_RAID_POST or not check_roles(ctx.message.author, RAID_ROLE_ID):
         await ctx.send("{}, you are not allowed to post raids."
                        .format(ctx.message.author.mention), delete_after=10.0)
         await ctx.message.delete()
