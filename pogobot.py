@@ -31,7 +31,7 @@ bot = commands.Bot(command_prefix=BOT_PREFIX, case_insensitive=True,
 
 running_updater = False
 
-reaction_list = ["mystic", "valor", "instinct", "1⃣", "2⃣", "3⃣", "❌"]
+reaction_list = ["mystic", "valor", "instinct", "1⃣", "2⃣", "3⃣", "❌","✅"]
 
 
 @bot.event
@@ -403,6 +403,8 @@ async def raid(ctx, pkmn, *, locationtime):
     await asyncio.sleep(0.1)
     await msg.add_reaction(getEmoji("instinct"))
     await asyncio.sleep(0.1)
+    await msg.add_reaction("✅")
+    await asyncio.sleep(0.1)
     await msg.add_reaction("1⃣")
     await asyncio.sleep(0.1)
     await msg.add_reaction("2⃣")
@@ -695,6 +697,7 @@ async def notify_raid(msg, coords=None):
     i_tot = 0
     total = 0
     user_guests = {}
+    user_ready = {}
     for reaction in msg.reactions:
         if isinstance(reaction.emoji, str):
             if reaction.emoji == "1⃣":
@@ -712,6 +715,10 @@ async def notify_raid(msg, coords=None):
                 users = await reaction.users().flatten()
                 for user in users:
                     user_guests[user.name] = user_guests.get(user.name, 0) + 3
+            elif reaction.emoji == "✅":
+                users = await reaction.users().flatten()
+                for user in users:
+                    user_ready[user.name] = "🗹"
     for reaction in msg.reactions:
         if isinstance(reaction.emoji, str):
             continue
@@ -720,10 +727,11 @@ async def notify_raid(msg, coords=None):
             for user in users:
                 if user == bot.user:
                     continue
-                guest = "+{}".format(
-                    user_guests.get(user.name), 0) if user.name in user_guests \
-                    else ""
-                mystic += user.mention + guest + ","
+                guest = ""
+                if user.name in user_guests:
+                    guest = "+{}".format(user_guests.get(user.name), "")
+                mystic += user_ready.get(user.name, "") + user.mention + guest \
+                    + ","
                 m_tot += 1
                 total += 1
             mystic = mystic.rstrip(", ")
@@ -732,10 +740,11 @@ async def notify_raid(msg, coords=None):
             for user in users:
                 if user == bot.user:
                     continue
-                guest = "+{}".format(
-                    user_guests.get(user.name), 0) if user.name in user_guests \
-                    else ""
-                valor += user.mention + guest + ","
+                guest = ""
+                if user.name in user_guests:
+                    guest = "+{}".format(user_guests.get(user.name), "")
+                valor += user_ready.get(user.name, "") + user.mention + guest \
+                    + ","
                 v_tot += 1
                 total += 1
             valor = valor.rstrip(", ")
@@ -744,10 +753,11 @@ async def notify_raid(msg, coords=None):
             for user in users:
                 if user == bot.user:
                     continue
-                guest = "+{}".format(
-                    user_guests.get(user.name), 0) if user.name in user_guests \
-                    else ""
-                instinct += user.mention + guest + ","
+                guest = ""
+                if user.name in user_guests:
+                    guest = "+{}".format(user_guests.get(user.name), "")
+                instinct += user_ready.get(user.name, "") + user.mention + \
+                    guest + ","
                 i_tot += 1
                 total += 1
             instinct = instinct.rstrip(", ")
