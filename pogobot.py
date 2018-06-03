@@ -718,7 +718,7 @@ async def notify_raid(msg, coords=None):
             elif reaction.emoji == "✅":
                 users = await reaction.users().flatten()
                 for user in users:
-                    user_ready[user.name] = "🗹"
+                    user_ready[user.name] = "✓"
     for reaction in msg.reactions:
         if isinstance(reaction.emoji, str):
             continue
