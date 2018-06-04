@@ -31,7 +31,7 @@ bot = commands.Bot(command_prefix=BOT_PREFIX, case_insensitive=True,
 
 running_updater = False
 
-reaction_list = ["mystic", "valor", "instinct", "1⃣", "2⃣", "3⃣", "❌","✅"]
+reaction_list = ["mystic", "valor", "instinct", "1⃣", "2⃣", "3⃣", "❌", "✅", "🖍"]
 
 
 @bot.event
@@ -62,6 +62,7 @@ async def on_ready():
 async def on_raw_reaction_add(*payload):
     if len(payload) == 4:
         emoji = payload[0]
+        print(emoji)
         mid = payload[1]
         channel = bot.get_channel(payload[2])
         user = channel.guild.get_member(payload[3]) if channel \
@@ -102,7 +103,7 @@ async def on_raw_reaction_remove(*payload):
 
 async def on_reaction_add(message, emoji, user):
     def confirm(m):
-        if m.author == user and m.content.lower().startswith("y"):
+        if m.author == user:
             return True
         return False
 
@@ -117,21 +118,90 @@ async def on_reaction_add(message, emoji, user):
                 message.embeds[0].author == user.name:
             ask = await channel.send("{} are you sure you would like to "
                                      "delete raid *{}*? (yes/ignore)"
-                                     .format(loc, user.mention))
+                                     .format(user.mention, loc))
             try:
                 msg = await bot.wait_for("message", timeout=30.0, check=confirm)
+                if msg.content.startswith("y"):
+                    printr("Raid {} deleted by user {}".format(loc, user.name))
+                    await channel.send("Raid **{}** deleted by {}"
+                                       .format(loc, user.mention),
+                                       delete_after=20.0)
+                    await message.delete()
+                    await ask.delete()
+                    await msg.delete()
+                    return
+                else:
+                    await message.remove_reaction(emoji, user)
+                    await ask.delete()
             except asyncio.TimeoutError:
                 await message.remove_reaction(emoji, user)
                 await ask.delete()
-            else:
-                printr("Raid {} deleted by user {}".format(loc, user.name))
-                await channel.send("Raid **{}** deleted by {}"
-                                   .format(loc, user.mention),
-                                   delete_after=20.0)
-                await message.delete()
+        return
+    if emoji.name == "🖍":
+        if check_roles(user, MOD_ROLE_ID) or \
+                message.embeds[0].author == user.name:
+            ask = await channel.send("{}, edit raid at {}? (delete, pokemon, "
+                                     "location, time)".format(user.mention, loc))
+            try:
+                msg = await bot.wait_for("message", timeout=30.0, check=confirm)
+                if msg.content.startswith("del"):    # delete post
+                    printr("Raid {} deleted by user {}".format(loc, user.name))
+                    await channel.send("Raid **{}** deleted by {}"
+                                       .format(loc, user.mention),
+                                       delete_after=20.0)
+                    await message.delete()
+                elif msg.content.startswith("p"):    # change pokemon
+                    if " " in msg.content:
+                        pkmn = msg.content.split(' ', 1)[1].strip()
+                        await editraidpokemon(message, pkmn)
+                        location = getfieldbyname(message.embeds[0].fields,
+                                                  "Location:")
+                        loc = location.value if location else "Unknown"
+                        await channel.send("Updated Raid at *{}* to **{}**"
+                                           .format(loc, pkmn))
+                    else:
+                        await channel.send("{}, unable to process pokemon!"
+                                           .format(user.mention),
+                                           delete_after=30.0)
+                elif msg.content.startswith("l"):  # change location
+                    if " " in msg.content:
+                        loc = msg.content.split(' ', 1)[1].strip()
+                        location = getfieldbyname(message.embeds[0].fields,
+                                                  "Location:")
+                        await editraidlocation(message, loc)
+                        await channel.send(
+                            "Updated Raid at {} to **{}**"
+                            .format(location.value if location else "Unknown",
+                                    loc))
+                    else:
+                        await channel.send("{}, unable to process location!"
+                                           .format(user.mention),
+                                           delete_after=30.0)
+                elif msg.content.startswith("t"):  # change time
+                    if " " in msg.content:
+                        timer = msg.content.split(' ', 1)[1]
+                        await editraidtime(message, timer)
+                        location = getfieldbyname(message.embeds[0].fields,
+                                                  "Location:")
+                        await channel.send(
+                            "Updated Raid at *{}* to time: **{}**"
+                            .format(location.value if location else "Unknown",
+                                    timer))
+                    else:
+                        await channel.send("{}, unable to process time!"
+                                           .format(user.mention),
+                                           delete_after=30.0)
+                    await message.remove_reaction(emoji, user)
+
+                await message.remove_reaction(emoji, user)
                 await ask.delete()
                 await msg.delete()
-        return
+                return
+            except asyncio.TimeoutError:
+                await message.remove_reaction(emoji, user)
+                await ask.delete()
+                return
+
     if message.embeds and check_footer(message, "raid"):
         printr("notifying raid {}: {}".format(loc, user.name))
         await notify_raid(message)
@@ -159,7 +229,8 @@ async def on_reaction_remove(message, emoji, user):
         loc = loc.value
     else:
         loc = "Unknown"
-    if emoji.name == "❌":
+    if emoji.name == "❌" or emoji.name == "🖍" or \
+            emoji.name not in reaction_list:
         return
     if check_footer(message, "raid"):
         printr("Notifying raid: User {} has left {}".format(user.name, loc))
@@ -329,16 +400,16 @@ async def raid(ctx, pkmn, *, locationtime):
         await ctx.message.delete()
         return
 
-    lt = locationtime.split()
+    lt = locationtime.rsplit(" ", 1)
     if len(lt) > 1:
         if re.search(r'[0-9]', str(lt[-1])):
-            location = (" ".join(lt[:-1])).strip()
-            timer = lt[-1].strip()
+            location = lt[0].strip()
+            timer = lt[1].strip()
         else:
-            location = (" ".join(lt)).strip()
+            location = locationtime.strip()
             timer = "Unset"
     else:
-        location = (" ".join(lt)).strip()
+        location = locationtime.strip()
         timer = "Unset"
 
     async for msg in ctx.message.channel.history():
@@ -411,9 +482,20 @@ async def raid(ctx, pkmn, *, locationtime):
     await asyncio.sleep(0.1)
     await msg.add_reaction("3⃣")
     await asyncio.sleep(0.1)
-    await msg.add_reaction("❌")
+    await msg.add_reaction("🖍")
     await asyncio.sleep(7200)
     await msg.unpin()
+
+
+async def editraidlocation(msg, location):
+    for i in range(0, len(msg.embeds[0].fields)):
+        field2 = msg.embeds[0].fields[i]
+        if "Location:" in field2.name:
+            msg.embeds[0].set_field_at(i, name=field2.name, value=location,
+                                       inline=True)
+            await msg.edit(embed=msg.embeds[0])
+            return True
+    return False
 
 
 @bot.command(aliases=["rt"],
@@ -436,41 +518,40 @@ async def raidtime(ctx, loc, timer=None):
                                    delete_after=20.0)
                     await ctx.message.delete()
                     return
-                for i in range(0, len(msg.embeds[0].fields)):
-                    field2 = msg.embeds[0].fields[i]
-                    if "Time:" in field2.name or \
-                            field2.name.startswith("Date"):
-                        if timer:
-                            if ctx.message.author.name != msg.embeds[0]\
-                                    .author.name and not check_roles(
-                                    ctx.message.author, RAID_ROLE_ID):
-                                await ctx.send("You cannot edit this raid post."
-                                               " Only the original poster can.",
-                                               delete_after=20.0)
-                                await ctx.message.delete()
-                                return
-                            msg.embeds[0].set_field_at(i, name=field2.name,
-                                                       value=timer,
-                                                       inline=True)
-                            await msg.edit(embed=msg.embeds[0])
-                            await ctx.send(
-                                "Updated Raid at *{}* to time: **{}**"
-                                    .format(field.value, timer))
-                            await ctx.message.delete()
-                            return
-                        else:
-                            total = getfieldbyname(msg.embeds[0].fields,
-                                                   "Total")
-                            total = total.value if total else 0
-                            await ctx.send(
-                                "Raid at **{}** at time: **{}** has  **{} **  "
-                                "people registered."
-                                    .format(field.value, field2.value, total))
-                            await ctx.message.delete()
-                            return
+                if timer:
+                    await editraidtime(msg, timer)
+                    await ctx.send(
+                        "Updated Raid at *{}* to time: **{}**"
+                        .format(field.value, timer))
+                    await ctx.message.delete()
+                    return
+                else:
+                    total = getfieldbyname(msg.embeds[0].fields, "Total")
+                    total = total.value if total else 0
+                    time = getfieldbyname(msg.embeds[0].fields, "Time:") or \
+                        getfieldbyname(msg.embeds[0].fields, "Date:")
+                    await ctx.send(
+                        "Raid at **{}** at time: **{}** has  **{} ** "
+                        "people registered."
+                        .format(field.value, time.value, total))
+                    await ctx.message.delete()
+                    return
     await ctx.message.delete()
     await ctx.send("Unable to find Raid at {}".format(loc), delete_after=30)
 
+
+async def editraidtime(msg, time):
+    for i in range(0, len(msg.embeds[0].fields)):
+        field2 = msg.embeds[0].fields[i]
+        if "Time:" in field2.name or \
+                field2.name.startswith("Date:"):
+            if time:
+                msg.embeds[0].set_field_at(i, name=field2.name,
+                                           value=time,
+                                           inline=True)
+                await msg.edit(embed=msg.embeds[0])
+                return True
+    return False
 
 @bot.command(aliases=["rp"],
              usage="!raidpokemon [location] [pokemon]",
@@ -493,32 +574,7 @@ async def raidpokemon(ctx, loc, pkmn):
                                    delete_after=20.0)
                     await ctx.message.delete()
                     return
-                descrip = msg.embeds[0].description
-                match = pokemon_match(pkmn)
-                if match:
-                    pkmn = match
-                pkmn = string.capwords(pkmn, "-")
-                pid = get_pokemon_id_from_name(pkmn.lower())
-                if pid:
-                    if IMAGE_URL:
-                        thumb = IMAGE_URL.format(pid)
-                        msg.embeds[0].set_thumbnail(url=thumb)
-                    mincp20, maxcp20 = get_cp_range(pid, 20)
-                    mincp25, maxcp25 = get_cp_range(pid, 25)
-
-                    descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20,
-                                                                maxcp20,
-                                                                mincp25,
-                                                                maxcp25)
-                else:
-                    printr("Pokemon id not found for {}".format(pkmn))
-                    msg.embeds[0].set_thumbnail(None)
-                if check_footer(msg, "raid"):
-                    msg.embeds[0].title = "Raid - {}".format(pkmn)
-                elif check_footer(msg, "ex-"):
-                    msg.embeds[0].title = "Ex-Raid - {}".format(pkmn)
-                msg.embeds[0].description = descrip
-                await msg.edit(embed=msg.embeds[0])
+                await editraidpokemon(msg, pkmn)
                 await ctx.send("Raid at **{}** updated to **{}**"
                                .format(field.value, pkmn))
                 await ctx.message.delete()
@@ -526,6 +582,35 @@ async def raidpokemon(ctx, loc, pkmn):
     await ctx.message.delete()
     await ctx.send("Unable to find Raid at {}".format(loc), delete_after=30)
 
+
+async def editraidpokemon(msg, pkmn):
+    descrip = msg.embeds[0].description
+    match = pokemon_match(pkmn)
+    if match:
+        pkmn = match
+    pkmn = string.capwords(pkmn, "-")
+    pid = get_pokemon_id_from_name(pkmn.lower())
+    if pid:
+        if IMAGE_URL:
+            thumb = IMAGE_URL.format(pid)
+            msg.embeds[0].set_thumbnail(url=thumb)
+        mincp20, maxcp20 = get_cp_range(pid, 20)
+        mincp25, maxcp25 = get_cp_range(pid, 25)
+
+        descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20,
+                                                    maxcp20,
+                                                    mincp25,
+                                                    maxcp25)
+    else:
+        printr("Pokemon id not found for {}".format(pkmn))
+        msg.embeds[0].set_thumbnail(None)
+    if check_footer(msg, "raid"):
+        msg.embeds[0].title = "Raid - {}".format(pkmn)
+    elif check_footer(msg, "ex-"):
+        msg.embeds[0].title = "Ex-Raid - {}".format(pkmn)
+    msg.embeds[0].description = descrip
+    await msg.edit(embed=msg.embeds[0])
+    return True
 
 @bot.command(aliases=["rm"],
              usage="!raidmessage [location] [msg]",
@@ -685,7 +770,7 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
     await asyncio.sleep(0.25)
     await msg.add_reaction("3⃣")
     await asyncio.sleep(0.25)
-    await msg.add_reaction("❌")
+    await msg.add_reaction("🖍")
 
 
 async def notify_raid(msg, coords=None):
@@ -718,7 +803,7 @@ async def notify_raid(msg, coords=None):
             elif reaction.emoji == "✅":
                 users = await reaction.users().flatten()
                 for user in users:
-                    user_ready[user.name] = "✓"
+                    user_ready[user.name] = "(✓)"
     for reaction in msg.reactions:
         if isinstance(reaction.emoji, str):
             continue
@@ -730,7 +815,7 @@ async def notify_raid(msg, coords=None):
                 guest = ""
                 if user.name in user_guests:
                     guest = "+{}".format(user_guests.get(user.name), "")
-                mystic += user_ready.get(user.name, "") + user.mention + guest \
+                mystic += user.mention + guest + user_ready.get(user.name, "") \
                     + ","
                 m_tot += 1
                 total += 1
