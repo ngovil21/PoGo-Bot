@@ -412,6 +412,8 @@ async def raid(ctx, pkmn, *, locationtime):
         location = locationtime.strip()
         timer = "Unset"
 
+    location = string.capwords(location)
+
     async for msg in ctx.message.channel.history():
         if msg.author == bot.user and msg.embeds:
             loc = getfieldbyname(msg.embeds[0].fields, "Location")
@@ -491,6 +493,7 @@ async def editraidlocation(msg, location):
     for i in range(0, len(msg.embeds[0].fields)):
         field2 = msg.embeds[0].fields[i]
         if "Location:" in field2.name:
+            location = string.capwords(location)
             msg.embeds[0].set_field_at(i, name=field2.name, value=location,
                                        inline=True)
             await msg.edit(embed=msg.embeds[0])
