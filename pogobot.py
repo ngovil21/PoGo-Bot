@@ -22,6 +22,8 @@ MOD_ROLE_ID = None
 RAID_ROLE_ID = None
 ANYONE_RAID_POST = False
 IMAGE_URL = ""
+EGG_IMAGE_URL = "https://raw.githubusercontent.com/FoglyOgly/Meowth/" \
+                "discordpy-v1/images/eggs/{}.png"
 EX_RAID_CHANNEL = None
 GMAPS_KEY = None
 PAYPAL_DONATION_LINK = "https://www.paypal.me/uicraids"
@@ -234,11 +236,16 @@ async def on_reaction_remove(message, emoji, user):
             emoji.name not in reaction_list:
         return
     if check_footer(message, "raid"):
-        printr("Notifying raid: User {} has left {}".format(user.name, loc))
+        printr("Notifying raid: User {} has left {} with {}"
+               .format(user.name, loc, emoji.name))
         await notify_raid(message)
     if check_footer(message, "ex-"):
-        role_name = message.embeds[0].footer.text
-        if role_name and role_name != "ex-raid" and \
+        role_name = message.embeds[0].footer.text.split(":", 1)
+        if role_name and len(role_name) > 1:
+            role_name = role_name[1].strip()
+        else:
+            role_name = None
+        if role_name and \
                 not isinstance(emoji, str):
             for role in user.roles:
                 if role.name == role_name:
@@ -497,10 +504,102 @@ async def editraidlocation(msg, location):
             location = string.capwords(location)
             msg.embeds[0].set_field_at(i, name=field2.name, value=location,
                                        inline=True)
+            coords = get_gym_coords(location)
+            if coords and GMAPS_KEY:
+                map_image = get_static_map_url(coords[0], coords[1],
+                                               api_key=GMAPS_KEY)
+                msg.embeds[0].set_image(url=map_image)
             await msg.edit(embed=msg.embeds[0])
             return True
     return False
 
+
+@bot.command(aliases=["re"],
+             usage="!raidegg [level] [location] [hatch_time]",
+             help="Create a new raid egg posting. Users will also be listed in "
+                  "the post by team. Press 1, 2, or 3 to specify other teammate"
+                  " guests that will accompany you.",
+             brief="Create a new raid post. !raidegg <pkmn> <location> <time>",
+             pass_context=True)
+async def raidegg(ctx, level, *, locationtime):
+    if not ANYONE_RAID_POST or not check_roles(ctx.message.author, RAID_ROLE_ID):
+        await ctx.send("{}, you are not allowed to post raids."
+                       .format(ctx.message.author.mention), delete_after=10.0)
+        await ctx.message.delete()
+        return
+
+    lt = locationtime.rsplit(" ", 1)
+    if len(lt) > 1:
+        if re.search(r'[0-9]', str(lt[-1])):
+            location = lt[0].strip()
+            timer = lt[1].strip()
+        else:
+            location = locationtime.strip()
+            timer = "Unset"
+    else:
+        location = locationtime.strip()
+        timer = "Unset"
+
+    location = string.capwords(location)
+
+    async for msg in ctx.message.channel.history():
+        if msg.author == bot.user and msg.embeds:
+            loc = getfieldbyname(msg.embeds[0].fields, "Location")
+            if loc and location.lower() == loc.value.lower() and level.lower() \
+                    in msg.embeds[0].title.lower():
+                if (datetime.utcnow() - msg.created_at) < \
+                        timedelta(minutes=30):
+                    await ctx.send("Raid at {} already exists, please use "
+                                   "previous post".format(loc.value),
+                                   delete_after=10.0)
+                    await ctx.message.delete()
+                    return
+
+    thumb = None
+    descrip = ""
+    if EGG_IMAGE_URL:
+        thumb = EGG_IMAGE_URL.format(level.upper())
+    embed = discord.Embed(title="Raid Egg - Level {}".format(level),
+                          description=descrip)
+    embed.set_author(name=ctx.message.author.name)
+    if thumb:
+        embed.set_thumbnail(url=thumb)
+    coords = get_gym_coords(location)
+    if coords and GMAPS_KEY:
+        map_image = get_static_map_url(coords[0], coords[1], api_key=GMAPS_KEY)
+        embed.set_image(url=map_image)
+    embed.add_field(name="Location:", value=location, inline=True)
+    embed.add_field(name="Hatch Time:", value=timer + "\n", inline=True)
+    embed.add_field(name="** **", value="** **", inline=False)
+    embed.add_field(name=str(getEmoji("mystic")) + "__Mystic (0)__", value="[]",
+                    inline=True)
+    embed.add_field(name=str(getEmoji("valor")) + "__Valor (0)__", value="[]",
+                    inline=True)
+    embed.add_field(name=str(getEmoji("instinct")) + "__Instinct (0)__",
+                    value="[]", inline=True)
+    embed.add_field(name="**Total:**", value="0", inline=False)
+    embed.set_footer(text="raid")
+    msg = await ctx.send(embed=embed)
+    await asyncio.sleep(0.1)
+    await ctx.message.delete()
+    await msg.pin()
+    await msg.add_reaction(getEmoji("mystic"))
+    await asyncio.sleep(0.1)
+    await msg.add_reaction(getEmoji("valor"))
+    await asyncio.sleep(0.1)
+    await msg.add_reaction(getEmoji("instinct"))
+    await asyncio.sleep(0.1)
+    await msg.add_reaction("✅")
+    await asyncio.sleep(0.1)
+    await msg.add_reaction("1⃣")
+    await asyncio.sleep(0.1)
+    await msg.add_reaction("2⃣")
+    await asyncio.sleep(0.1)
+    await msg.add_reaction("3⃣")
+    await asyncio.sleep(0.1)
+    await msg.add_reaction("🖍")
+    await asyncio.sleep(7200)
+    await msg.unpin()
 
 @bot.command(aliases=["rt"],
              usage="!raidtime [location] [time]",
@@ -544,14 +643,18 @@ async def raidtime(ctx, loc, timer=None):
     await ctx.send("Unable to find Raid at {}".format(loc), delete_after=30)
 
 
-async def editraidtime(msg, time):
+async def editraidtime(msg, timer):
     for i in range(0, len(msg.embeds[0].fields)):
         field2 = msg.embeds[0].fields[i]
         if "Time:" in field2.name or \
                 field2.name.startswith("Date:"):
-            if time:
-                msg.embeds[0].set_field_at(i, name=field2.name,
-                                           value=time,
+            if timer:
+                if "Date:" in field2.name:
+                    fname = "Date:"
+                else:
+                    fname = "Proposed Time:"
+                msg.embeds[0].set_field_at(i, name=fname,
+                                           value=timer,
                                            inline=True)
                 await msg.edit(embed=msg.embeds[0])
                 return True
@@ -755,7 +858,7 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
     embed.add_field(name=str(getEmoji("instinct")) + "__Instinct (0)__",
                     value="[]", inline=True)
     embed.add_field(name="Total:", value="0", inline=False)
-    embed.set_footer(text=role)
+    embed.set_footer(text="ex-raid: {}".format(role))
     msg = await ctx.message.channel.send(embed=embed)
     await asyncio.sleep(0.25)
     await ctx.message.delete()
@@ -887,7 +990,11 @@ async def notify_exraid(msg, coords=None):
     v_tot = 0
     i_tot = 0
     total = 0
-    role_name = msg.embeds[0].footer.text
+    role_name = msg.embeds[0].footer.text.split(":", 1)
+    if role_name and len(role_name) > 1:
+        role_name = role_name[1].strip()
+    else:
+        role_name = None
     role = None
     if role_name and role_name != "ex-raid":
         role = await getrolefromname(msg.guild, role_name, True)

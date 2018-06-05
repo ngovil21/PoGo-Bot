@@ -137,7 +137,7 @@ def get_gym_coords(gn):
         if not results:
             return None
         if len(results) > 1:
-            if abs(results[0][1] - results[1][1]) < 5:
+            if abs(results[0][1] - results[1][1]) < 7:
                 printr("Too many similar results for {}".format(gn))
                 return None
     name, match = results[0]
