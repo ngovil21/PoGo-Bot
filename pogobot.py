@@ -119,7 +119,7 @@ async def on_reaction_add(message, emoji, user):
                                      "delete raid *{}*? (yes/ignore)"
                                      .format(user.mention, loc))
             try:
-                msg = await bot.wait_for("message", timeout=30.0, check=confirm)
+                msg = await bot.wait_for("message", timeout=45.0, check=confirm)
                 if msg.content.startswith("y"):
                     printr("Raid {} deleted by user {}".format(loc, user.name))
                     await channel.send("Raid **{}** deleted by {}"
@@ -143,13 +143,13 @@ async def on_reaction_add(message, emoji, user):
                                      "location, time)".format(user.mention, loc))
             try:
                 msg = await bot.wait_for("message", timeout=30.0, check=confirm)
-                if msg.content.startswith("del"):    # delete post
+                if msg.content.lower().startswith("del"):    # delete post
                     printr("Raid {} deleted by user {}".format(loc, user.name))
                     await channel.send("Raid **{}** deleted by {}"
                                        .format(loc, user.mention),
                                        delete_after=20.0)
                     await message.delete()
-                elif msg.content.startswith("p"):    # change pokemon
+                elif msg.content.lower().startswith("p"):    # change pokemon
                     if " " in msg.content:
                         pkmn = msg.content.split(' ', 1)[1].strip()
                         await editraidpokemon(message, pkmn)
@@ -161,8 +161,8 @@ async def on_reaction_add(message, emoji, user):
                     else:
                         await channel.send("{}, unable to process pokemon!"
                                            .format(user.mention),
-                                           delete_after=30.0)
-                elif msg.content.startswith("l"):  # change location
+                                           delete_after=20.0)
+                elif msg.content.lower().startswith("l"):  # change location
                     if " " in msg.content:
                         loc = msg.content.split(' ', 1)[1].strip()
                         location = getfieldbyname(message.embeds[0].fields,
@@ -175,8 +175,8 @@ async def on_reaction_add(message, emoji, user):
                     else:
                         await channel.send("{}, unable to process location!"
                                            .format(user.mention),
-                                           delete_after=30.0)
-                elif msg.content.startswith("t"):  # change time
+                                           delete_after=20.0)
+                elif msg.content.lower().startswith("t"):  # change time
                     if " " in msg.content:
                         timer = msg.content.split(' ', 1)[1]
                         await editraidtime(message, timer)
@@ -198,6 +198,8 @@ async def on_reaction_add(message, emoji, user):
                 return
             except asyncio.TimeoutError:
                 await message.remove_reaction(emoji, user)
+                await channel.send("{} response timed out. Try again."
+                                   .format(user.mention), delete_after=20.0)
                 await ask.delete()
                 return
 
