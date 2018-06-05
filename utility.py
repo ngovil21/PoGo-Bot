@@ -89,9 +89,10 @@ def load_locale(fp):
 
 
 def load_gyms(fp):
-    global gyms
+    global gyms, gym_names
     with open(fp) as f:
         gyms = json.load(f)
+    gym_names = []
     for d in gyms:
         if 'name' in d:
             gym_names.append(d['name'])

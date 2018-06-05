@@ -393,6 +393,22 @@ async def clearraids(ctx):
     await ctx.send("Cleared all raid posts", delete_after=10)
 
 
+@bot.command(aliases=["rg"],
+             brief="[MOD] Reload gyms from file. !reloadgyms",
+             pass_context=True)
+async def reloadgyms(ctx):
+    if os.path.exists('gyms.json'):
+        try:
+            load_gyms('gyms.json')
+            await ctx.send("Gyms successfully loaded!", delete_after=30.0)
+        except:
+            await ctx.send("There was an issue reloading the gyms!",
+                           delete_after=30.0)
+    else:
+        ctx.send("gyms.json does not exist!", delete_after=30.0)
+    ctx.message.delete()
+
+
 @bot.command(aliases=["r"],
              usage="!raid [pokemon] [location] [time]",
              help="Create a new raid posting. Users will also be listed in "
