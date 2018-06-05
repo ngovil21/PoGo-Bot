@@ -22,8 +22,7 @@ MOD_ROLE_ID = None
 RAID_ROLE_ID = None
 ANYONE_RAID_POST = False
 IMAGE_URL = ""
-EGG_IMAGE_URL = "https://raw.githubusercontent.com/FoglyOgly/Meowth/" \
-                "discordpy-v1/images/eggs/{}.png"
+EGG_IMAGE_URL = ""
 EX_RAID_CHANNEL = None
 GMAPS_KEY = None
 PAYPAL_DONATION_LINK = "https://www.paypal.me/uicraids"
@@ -1148,6 +1147,7 @@ if __name__ == "__main__":
 
     ANYONE_RAID_POST = cfg['PoGoBot'].get('AnyoneRaidPost') or False
     IMAGE_URL = cfg['PoGoBot'].get('ImageURL') or None
+    EGG_IMAGE_URL = cfg['PoGoBot'].get('EggImageURL') or None
     EX_RAID_CHANNEL = cfg['PoGoBot'].get('ExRaidChannel') or 0
     GMAPS_KEY = cfg['PoGoBot'].get('GMapsKey') or None
     load_locale(os.path.join('locales', '{}.json'
