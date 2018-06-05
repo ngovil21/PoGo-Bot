@@ -62,7 +62,6 @@ async def on_ready():
 async def on_raw_reaction_add(*payload):
     if len(payload) == 4:
         emoji = payload[0]
-        print(emoji)
         mid = payload[1]
         channel = bot.get_channel(payload[2])
         user = channel.guild.get_member(payload[3]) if channel \
@@ -600,10 +599,8 @@ async def editraidpokemon(msg, pkmn):
         mincp20, maxcp20 = get_cp_range(pid, 20)
         mincp25, maxcp25 = get_cp_range(pid, 25)
 
-        descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20,
-                                                    maxcp20,
-                                                    mincp25,
-                                                    maxcp25)
+        descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20, maxcp20,
+                                                    mincp25, maxcp25)
     else:
         printr("Pokemon id not found for {}".format(pkmn))
         msg.embeds[0].set_thumbnail(None)
