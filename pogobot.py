@@ -828,7 +828,7 @@ async def notify_raid(msg, coords=None):
                 guest = ""
                 if user.name in user_guests:
                     guest = "+{}".format(user_guests.get(user.name), "")
-                valor += user_ready.get(user.name, "") + user.mention + guest \
+                valor += user.mention + guest + user_ready.get(user.name, "") \
                     + ","
                 v_tot += 1
                 total += 1
@@ -841,8 +841,8 @@ async def notify_raid(msg, coords=None):
                 guest = ""
                 if user.name in user_guests:
                     guest = "+{}".format(user_guests.get(user.name), "")
-                instinct += user_ready.get(user.name, "") + user.mention + \
-                    guest + ","
+                instinct += user.mention + guest + \
+                    user_ready.get(user.name, "") + ","
                 i_tot += 1
                 total += 1
             instinct = instinct.rstrip(", ")
