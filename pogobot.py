@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from utility import getfieldbyname, check_footer, \
     getrolefromname, get_static_map_url, load_locale, load_base_stats, \
     load_cp_multipliers, load_gyms, get_gym_coords, get_cp_range, \
-    get_pokemon_id_from_name, printr, pokemon_match, check_roles
+    get_pokemon_id_from_name, printr, pokemon_match, check_roles, get_types
 
 BOT_PREFIX = "!"
 BOT_TOKEN = None
@@ -141,7 +141,8 @@ async def on_reaction_add(message, emoji, user):
         if check_roles(user, MOD_ROLE_ID) or \
                 message.embeds[0].author == user.name:
             ask = await channel.send("{}, edit raid at {}? (delete, pokemon, "
-                                     "location, time)".format(user.mention, loc))
+                                     "location, time, cancel)"
+                                     .format(user.mention, loc))
             try:
                 msg = await bot.wait_for("message", timeout=30.0, check=confirm)
                 if msg.content.lower().startswith("del"):    # delete post
@@ -874,7 +875,7 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
                     value="[]", inline=True)
     embed.add_field(name="Total:", value="0", inline=False)
     embed.set_footer(text="ex-raid: {}".format(role))
-    msg = await ctx.message.channel.send(embed=embed)
+    msg = await ctx.send(embed=embed)
     await asyncio.sleep(0.25)
     await ctx.message.delete()
     await msg.pin()
@@ -891,6 +892,46 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
     await msg.add_reaction("3⃣")
     await asyncio.sleep(0.25)
     await msg.add_reaction("🖍")
+
+
+@bot.command(aliases=["stats"],
+             name="getstats",
+             brief="Get Stats for a Pokemon. !getstats [pokemon]",
+             help="Responds with the pokemon's stats.",
+             usage="!getstats [pokemon]",
+             pass_context=True)
+async def getstats(ctx, pkmn):
+    thumb = None
+    descrip = ""
+    match = pokemon_match(pkmn)
+    if match:
+        pkmn = match
+    pkmn = string.capwords(pkmn, "-")
+    pid = get_pokemon_id_from_name(pkmn.lower())
+    if pid:
+        if IMAGE_URL:
+            thumb = IMAGE_URL.format(pid)
+
+        mincp20, maxcp20 = get_cp_range(pid, 20)
+        mincp25, maxcp25 = get_cp_range(pid, 25)
+
+        descrip = "CP: ({}-{})\nWB: ({}-{})".format(mincp20, maxcp20,
+                                                    mincp25, maxcp25)
+    else:
+        printr("Pokemon id not found for {}".format(pkmn))
+        await ctx.send("{}, could not find Pokemon with name: {}"
+                       .format(ctx.message.user.mention, pkmn))
+        return
+
+    embed = discord.Embed(title="#{}. {}".format(pid, pkmn),
+                          description=descrip)
+    types = get_types(pid)
+    fval = types[0] + ("/{}".format(types[1]) if types[1] else "")
+    embed.add_field(name="Types:", value=fval, inline=False)
+    if thumb:
+        embed.set_thumbnail(url=thumb)
+    await ctx.send("{}, here you go.".format(ctx.message.author.mention))
+    await ctx.send(embed=embed)
 
 
 async def notify_raid(msg, coords=None):

@@ -127,6 +127,16 @@ def get_cp_range(pid, level):
     return min_cp, max_cp
 
 
+def get_types(pid):
+    stats = base_stats["{0:03d}".format(pid)]
+    type1 = locale["{0:03d}".format(stats.get("type1"))]
+    if "type2" in stats:
+        type2 = locale["{0:03d}".format(stats.get("type2"))]
+    else:
+        type2 = None
+    return type1, type2
+
+
 def get_gym_coords(gn):
     results = process.extractBests(gn, gym_names, scorer=fuzz.partial_ratio,
                                    score_cutoff=70)
