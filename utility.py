@@ -129,9 +129,9 @@ def get_cp_range(pid, level):
 
 def get_types(pid):
     stats = base_stats["{0:03d}".format(pid)]
-    type1 = locale["{0:03d}".format(stats.get("type1"))]
+    type1 = locale["types"]["{0:03d}".format(stats.get("type1"))]
     if "type2" in stats:
-        type2 = locale["{0:03d}".format(stats.get("type2"))]
+        type2 = locale["types"]["{0:03d}".format(stats.get("type2"))]
     else:
         type2 = None
     return type1, type2
