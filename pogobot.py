@@ -320,7 +320,7 @@ async def purge(ctx, pinned=False):
         ask = await ctx.send("Are you sure you would like to clear the last 100"
                              " messages? (yes/no)")
         try:
-            msg = await bot.wait_for("message", timeout=45.0, check=confirm)
+            msg = await bot.wait_for("message", timeout=30.0, check=confirm)
         except asyncio.TimeoutError:
             await ctx.message.delete()
             await ask.delete()
