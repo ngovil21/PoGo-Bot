@@ -193,10 +193,12 @@ async def on_reaction_add(message, emoji, user):
                                            .format(user.mention),
                                            delete_after=30.0)
                     await message.remove_reaction(emoji, user)
-
-                await message.remove_reaction(emoji, user)
+                else:
+                    await channel.send("{}, I do not understand that option."
+                                       .format(user.mention), delete_after=20.0)
                 await ask.delete()
                 await msg.delete()
+                await message.remove_reaction(emoji, user)
                 return
             except asyncio.TimeoutError:
                 await message.remove_reaction(emoji, user)
