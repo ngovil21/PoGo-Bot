@@ -121,7 +121,7 @@ async def on_reaction_add(message, emoji, user):
                                      .format(user.mention, loc))
             try:
                 msg = await bot.wait_for("message", timeout=45.0, check=confirm)
-                if msg.content.startswith("y"):
+                if msg.content.lower().startswith("y"):
                     printr("Raid {} deleted by user {}".format(loc, user.name))
                     await channel.send("Raid **{}** deleted by {}"
                                        .format(loc, user.mention),
@@ -274,12 +274,20 @@ async def info(ctx):
 
 
 @bot.command(aliases=["clr"],
-             brief="[MOD] Clear all members from role",
+             brief="[MOD] Clear all members from role. !clearrole [role_name]",
              pass_context=True)
-async def clearrole(ctx, rolex):
+async def clearrole(ctx, rolex=None):
     if not await checkmod(ctx):
         return
-
+    if not rolex:
+        cname = ctx.message.channel.name
+        for role in ctx.message.guild.roles:
+            if cname.lower() == role.name.lower():
+                rolex = cname
+        if not rolex:
+            await ctx.send("No role specified!", delete_after=20.0)
+            await ctx.message.delete()
+            return
     members = bot.get_all_members()
     count = 0
     for member in members:
@@ -303,9 +311,31 @@ async def purge(ctx, pinned=False):
     def notpinned(message):
         return not message.pinned
 
+    def confirm(m):
+        if m.author == ctx.message.author:
+            return True
+        return False
+
     if await checkmod(ctx):
-        await ctx.message.channel.purge(check=notpinned if not pinned else None)
-        await asyncio.sleep(0.1)
+        ask = await ctx.send("Are you sure you would like to clear the last 100"
+                             " messages? (yes/no)")
+        try:
+            msg = await bot.wait_for("message", timeout=45.0, check=confirm)
+        except asyncio.TimeoutError:
+            await ctx.message.delete()
+            await ask.delete()
+            return
+        channel = ctx.message.channel
+        if msg.content.lower().startswith("y"):
+            await ask.delete()
+            await msg.delete()
+            await channel.purge(check=notpinned if not pinned else None)
+            await asyncio.sleep(0.1)
+        else:
+            await ctx.send("Purge canceled.", delete_after=10.0)
+            await ask.delete()
+            await msg.delete()
+            await ctx.message.delete()
 
 
 @bot.command(aliases=[],
