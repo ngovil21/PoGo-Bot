@@ -138,10 +138,10 @@ async def on_reaction_add(message, emoji, user):
                 await ask.delete()
         return
     if emoji.name == "🖍":
-        if check_roles(user, MOD_ROLE_ID) or \
-                message.embeds[0].author == user.name:
+        if message.embeds[0].author == user.name or \
+                check_roles(user, MOD_ROLE_ID):
             ask = await channel.send("{}, edit raid at {}? (delete, pokemon, "
-                                     "location, time, cancel)"
+                                     "location, time, role, cancel)"
                                      .format(user.mention, loc))
             try:
                 msg = await bot.wait_for("message", timeout=30.0, check=confirm)
@@ -193,6 +193,27 @@ async def on_reaction_add(message, emoji, user):
                                            .format(user.mention),
                                            delete_after=30.0)
                     await message.remove_reaction(emoji, user)
+                elif msg.content.lower().startswith("r"):  # change role
+                    printr("Edit role")
+                    if not check_footer(message, "ex-"):
+                        await channel.send("{}, not an Ex-raid, "
+                                           "cannot change role."
+                                           .format(user.mention),
+                                           delete_after=20.0)
+                    elif " " in msg.content:
+                        role = msg.content.split(' ', 1)[1]
+                        printr(role)
+                        await editraidrole(message, role)
+                        location = getfieldbyname(message.embeds[0].fields,
+                                                  "Location:")
+                        await channel.send(
+                            "Updated Raid at *{}* to role: **{}**"
+                            .format(location.value if location else "Unknown",
+                                    role))
+                    else:
+                        await channel.send("{}, unable to process role!"
+                                           .format(user.mention),
+                                           delete_after=30.0)
                 else:
                     await channel.send("{}, I do not understand that option."
                                        .format(user.mention), delete_after=20.0)
@@ -216,7 +237,7 @@ async def on_reaction_add(message, emoji, user):
                     user.name, emoji, loc))
         return
 
-    if message.embeds and check_footer(message, "ex-"):
+    if message.embeds and check_footer(message, "ex-raid"):
         printr("notifying exraid {}: {}".format(loc, user.name))
         await notify_exraid(message)
         if isinstance(emoji, str):
@@ -241,7 +262,7 @@ async def on_reaction_remove(message, emoji, user):
         printr("Notifying raid: User {} has left {} with {}"
                .format(user.name, loc, emoji.name))
         await notify_raid(message)
-    if check_footer(message, "ex-"):
+    if check_footer(message, "ex-raid"):
         role_name = message.embeds[0].footer.text.split(":", 1)
         if role_name and len(role_name) > 1:
             role_name = role_name[1].strip()
@@ -759,7 +780,7 @@ async def editraidpokemon(msg, pkmn):
         msg.embeds[0].set_thumbnail(None)
     if check_footer(msg, "raid"):
         msg.embeds[0].title = "Raid - {}".format(pkmn)
-    elif check_footer(msg, "ex-"):
+    elif check_footer(msg, "ex-raid"):
         msg.embeds[0].title = "Ex-Raid - {}".format(pkmn)
     msg.embeds[0].description = descrip
     await msg.edit(embed=msg.embeds[0])
@@ -840,7 +861,7 @@ async def raidcoords(ctx, loc, *, coords):
                                    delete_after=10.0)
                     await ctx.message.delete()
                     return
-                elif check_footer(msg, "ex-"):
+                elif check_footer(msg, "ex-raid"):
                     await notify_exraid(msg, coords)
                     await ctx.send("Ex-Raid {} updated to coords: ({},{})"
                                    .format(field.value, coords[0], coords[1]),
@@ -924,6 +945,15 @@ async def exraid(ctx, pkmn, location, date, role="ex-raid"):
     await msg.add_reaction("3⃣")
     await asyncio.sleep(0.25)
     await msg.add_reaction("🖍")
+
+
+async def editraidrole(message, role):
+    if message.embeds and check_footer(message, "ex-"):
+        message.embeds[0].set_footer(text="ex-raid: {}".format(role))
+        await message.edit(embed=message.embeds[0])
+        printr("Ex-raid role changed to: {}".format(role))
+        return True
+    return False
 
 
 @bot.command(aliases=["stats"],
