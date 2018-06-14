@@ -296,6 +296,18 @@ async def info(ctx):
     await ctx.send(embed=embed)
 
 
+@bot.command(aliases=[],
+             brief="Send BEAST message",
+             pass_context=True)
+async def beast(ctx):
+    embed = discord.Embed(title=":regional_indicator_b: :regional_indicator_e: "
+                                ":regional_indicator_a: :regional_indicator_s: "
+                                ":regional_indicator_t:")
+    embed.set_author(name=ctx.message.author.name)
+    await ctx.send(embed=embed)
+    await ctx.message.delete()
+
+
 @bot.command(aliases=["clr"],
              brief="[MOD] Clear all members from role. !clearrole [role_name]",
              pass_context=True)
